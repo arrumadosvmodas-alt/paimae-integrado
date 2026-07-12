@@ -5,8 +5,9 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-COPY pyproject.toml /app/
-RUN pip install --no-cache-dir -e ".[dev]"
-
+# Copia o código completo para dentro do container
 COPY . /app
+
+# Instala a aplicação em modo de produção (sem editable -e e sem pacotes dev)
+RUN pip install --no-cache-dir .
 
