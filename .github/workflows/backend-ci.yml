@@ -1,0 +1,38 @@
+name: Backend CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: paimae_test
+          POSTGRES_USER: paimae
+          POSTGRES_PASSWORD: paimae
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U paimae -d paimae_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://paimae:paimae@localhost:5432/paimae_test
+      JWT_SECRET_KEY: ci-secret-key
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: python -m compileall app alembic tests
+      - run: pytest

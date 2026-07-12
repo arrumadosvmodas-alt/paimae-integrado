@@ -1,0 +1,17 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+*.pyo
+*.pyd
+*.log
+dist/
+build/
+*.egg-info/
+postgres_data/
+node_modules/
+frontend/node_modules/
+.npm-cache/
+frontend/dist/

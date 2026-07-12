@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #0052FF;
+  --color-secondary: #00C853;
+  --color-tertiary: #FFAB00;
+  --color-error: #FF5252;
+  --color-background: #F5F7FB;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F8FAFD;
+  --color-border: #E5EAF2;
+  --color-text-primary: #172033;
+  --color-text-muted: #5D6B82;
+}
+
+.dark {
+  --color-primary: #3B82F6;
+  --color-secondary: #10B981;
+  --color-tertiary: #F59E0B;
+  --color-error: #EF4444;
+  --color-background: #0F172A;
+  --color-surface: #1E293B;
+  --color-surface-hover: #334155;
+  --color-border: #334155;
+  --color-text-primary: #F8FAFC;
+  --color-text-muted: #94A3B8;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-text-primary font-sans transition-colors duration-200 antialiased;
+  }
+
+  /* Foco de acessibilidade global */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 dark:ring-offset-background;
+  }
+}
+
+/* Animações e micro-interações personalizadas */
+.transition-all-custom {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Efeito de vidro (glassmorphism) */
+.glass {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  @apply border border-border;
+}
+
+.dark .glass {
+  background-color: rgba(30, 41, 59, 0.8);
+}
+
+/* Skeleton Loading Pulse */
+@keyframes pulse-skeleton {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .4;
+  }
+}
+
+.animate-pulse-skeleton {
+  animation: pulse-skeleton 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
