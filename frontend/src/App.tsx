@@ -549,6 +549,7 @@ function DashboardPage({
           <div className="p-4 border-t border-border bg-background/20">
             <PedagogicalMaterialForm
               schoolId={selectedChild?.school_id}
+              schools={schools}
               onSubmit={(payload) => onSubmit("/api/v1/pedagogy/materials", payload, "Material cadastrado com sucesso.")}
               notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
             />

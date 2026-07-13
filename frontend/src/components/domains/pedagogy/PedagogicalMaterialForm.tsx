@@ -1,18 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "../../ui/Card";
 import { Input, Textarea } from "../../ui/Input";
 import { Button } from "../../ui/Button";
 import { api } from "../../../lib/api";
 import { BookOpen, Search, Plus, Trash2 } from "lucide-react";
-import type { MaterialItem } from "../../../lib/types";
+import type { School } from "../../../lib/types";
 
 interface PedagogicalMaterialFormProps {
   schoolId?: string;
+  schools?: School[];
   onSubmit: (payload: any) => Promise<void>;
   notify: (msg: string, type?: "ok" | "error") => void;
 }
 
-export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: PedagogicalMaterialFormProps) {
+export function PedagogicalMaterialForm({ schoolId: propSchoolId, schools = [], onSubmit, notify }: PedagogicalMaterialFormProps) {
+  const [selectedSchoolId, setSelectedSchoolId] = useState(propSchoolId || "");
   const [isbn, setIsbn] = useState("");
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
@@ -28,6 +30,17 @@ export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: Pedagogi
   const [newItemTheme, setNewItemTheme] = useState("");
   const [newItemChapter, setNewItemChapter] = useState("");
   const [newItemPage, setNewItemPage] = useState("");
+
+  // Sincroniza o schoolId externo ou seleciona o primeiro disponível
+  useEffect(() => {
+    if (propSchoolId) {
+      setSelectedSchoolId(propSchoolId);
+    } else if (schools.length > 0 && !selectedSchoolId) {
+      setSelectedSchoolId(schools[0].id);
+    }
+  }, [propSchoolId, schools]);
+
+  const activeSchoolId = selectedSchoolId || (schools.length > 0 ? schools[0].id : "");
 
   const handleLookupISBN = async () => {
     if (!isbn.trim()) return;
@@ -69,7 +82,11 @@ export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: Pedagogi
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!schoolId || !title.trim() || !subject.trim() || !pedagogicalLine.trim()) {
+    if (!activeSchoolId) {
+      notify("Selecione ou cadastre uma escola antes de adicionar o material.", "error");
+      return;
+    }
+    if (!title.trim() || !subject.trim() || !pedagogicalLine.trim()) {
       notify("Preencha todos os campos obrigatórios: Título, Matéria e Linha Pedagógica.", "error");
       return;
     }
@@ -77,7 +94,7 @@ export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: Pedagogi
     setIsLoadingSubmit(true);
     try {
       await onSubmit({
-        school_id: schoolId,
+        school_id: activeSchoolId,
         title: title.trim(),
         author: author.trim() || null,
         isbn: isbn.trim() || null,
@@ -102,6 +119,27 @@ export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: Pedagogi
 
   return (
     <Card title="Adicionar Material Didático" icon={<BookOpen className="w-5 h-5 text-primary" />}>
+      {/* Seletor de Escola (Apenas se não herdado automaticamente de uma criança selecionada) */}
+      {!propSchoolId && schools.length > 0 && (
+        <div className="mb-4">
+          <label className="block text-xs font-bold text-text-primary uppercase tracking-wider mb-1.5">
+            Escola de Destino *
+          </label>
+          <select
+            value={activeSchoolId}
+            onChange={(e) => setSelectedSchoolId(e.target.value)}
+            disabled={isLoadingSubmit}
+            className="w-full h-10 px-3 border border-border rounded-lg bg-surface text-text-primary focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition-all duration-200 text-sm"
+          >
+            {schools.map((school) => (
+              <option key={school.id} value={school.id}>
+                {school.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="flex gap-2 mb-4 items-end">
         <div className="flex-1">
           <Input
@@ -109,12 +147,12 @@ export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: Pedagogi
             placeholder="Ex: 9788532283215"
             value={isbn}
             onChange={(e) => setIsbn(e.target.value)}
-            disabled={isLoadingISBN || isLoadingSubmit || !schoolId}
+            disabled={isLoadingISBN || isLoadingSubmit || !activeSchoolId}
           />
         </div>
         <Button
           onClick={handleLookupISBN}
-          disabled={isLoadingISBN || !isbn.trim() || !schoolId}
+          disabled={isLoadingISBN || !isbn.trim() || !activeSchoolId}
           className="h-10 px-3 flex items-center gap-1.5"
           variant="outline"
         >
@@ -130,7 +168,7 @@ export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: Pedagogi
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
-          disabled={isLoadingSubmit || !schoolId}
+          disabled={isLoadingSubmit || !activeSchoolId}
         />
         <div className="grid grid-cols-2 gap-4">
           <Input
@@ -138,7 +176,7 @@ export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: Pedagogi
             placeholder="Ex: Ana Clara"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
-            disabled={isLoadingSubmit || !schoolId}
+            disabled={isLoadingSubmit || !activeSchoolId}
           />
           <Input
             label="Componente Curricular / Assunto *"
@@ -146,7 +184,7 @@ export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: Pedagogi
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             required
-            disabled={isLoadingSubmit || !schoolId}
+            disabled={isLoadingSubmit || !activeSchoolId}
           />
         </div>
         <Input
@@ -155,21 +193,21 @@ export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: Pedagogi
           value={pedagogicalLine}
           onChange={(e) => setPedagogicalLine(e.target.value)}
           required
-          disabled={isLoadingSubmit || !schoolId}
+          disabled={isLoadingSubmit || !activeSchoolId}
         />
         <Textarea
           label="Objetivos de Aprendizagem"
           placeholder="Ex: Compreender as quatro operações matemáticas básicas..."
           value={objectives}
           onChange={(e) => setObjectives(e.target.value)}
-          disabled={isLoadingSubmit || !schoolId}
+          disabled={isLoadingSubmit || !activeSchoolId}
         />
         <Textarea
           label="Orientação para a Família"
           placeholder="Ex: Praticar contagem de brinquedos no cotidiano..."
           value={familyOrientation}
           onChange={(e) => setFamilyOrientation(e.target.value)}
-          disabled={isLoadingSubmit || !schoolId}
+          disabled={isLoadingSubmit || !activeSchoolId}
         />
 
         {/* Adição de itens específicos do livro */}
@@ -184,27 +222,27 @@ export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: Pedagogi
               placeholder="Ex: Multiplicação Simples"
               value={newItemTheme}
               onChange={(e) => setNewItemTheme(e.target.value)}
-              disabled={!schoolId}
+              disabled={!activeSchoolId}
             />
             <Input
               label="Capítulo"
               placeholder="Ex: Cap. 2"
               value={newItemChapter}
               onChange={(e) => setNewItemChapter(e.target.value)}
-              disabled={!schoolId}
+              disabled={!activeSchoolId}
             />
             <Input
               label="Página"
               placeholder="Ex: p. 45-50"
               value={newItemPage}
               onChange={(e) => setNewItemPage(e.target.value)}
-              disabled={!schoolId}
+              disabled={!activeSchoolId}
             />
           </div>
           <Button
             type="button"
             onClick={handleAddItem}
-            disabled={!newItemTheme.trim() || !schoolId}
+            disabled={!newItemTheme.trim() || !activeSchoolId}
             variant="outline"
             className="w-full flex items-center justify-center gap-1 mt-1"
           >
@@ -232,10 +270,10 @@ export function PedagogicalMaterialForm({ schoolId, onSubmit, notify }: Pedagogi
         <Button
           type="submit"
           isLoading={isLoadingSubmit}
-          disabled={!schoolId}
+          disabled={!activeSchoolId}
           className="w-full mt-2"
         >
-          {schoolId ? "Cadastrar Material Didático" : "Selecione uma escola primeiro"}
+          {activeSchoolId ? "Cadastrar Material Didático" : "Cadastre uma escola primeiro"}
         </Button>
       </form>
     </Card>
