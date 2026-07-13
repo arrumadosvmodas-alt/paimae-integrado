@@ -10,6 +10,7 @@ interface NotificationListProps {
   childId?: string;
   onGenerateToday: () => Promise<void>;
   onCompleteNotification: (id: string) => Promise<void>;
+  showGenerateButton?: boolean;
 }
 
 export function NotificationList({
@@ -17,6 +18,7 @@ export function NotificationList({
   childId,
   onGenerateToday,
   onCompleteNotification,
+  showGenerateButton = true,
 }: NotificationListProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [completingIds, setCompletingIds] = useState<string[]>([]);
@@ -87,7 +89,7 @@ export function NotificationList({
     <Card
       title="Notificações"
       icon={<Bell className="w-5 h-5 text-primary" />}
-      headerActions={headerActions}
+      headerActions={showGenerateButton ? headerActions : undefined}
     >
       {!notifications.length ? (
         <div className="flex flex-col items-center justify-center py-8 px-4 text-center">

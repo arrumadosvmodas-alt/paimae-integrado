@@ -65,3 +65,13 @@ def scoped_child_ids_query(user: User):
         ChildGuardian.guardian_id == user.id,
         ChildGuardian.can_view.is_(True),
     )
+
+
+def ensure_school_staff(user: User) -> None:
+    if user.role in ("admin", "school"):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Apenas administradores e funcionarios da escola podem realizar esta acao."
+    )
+

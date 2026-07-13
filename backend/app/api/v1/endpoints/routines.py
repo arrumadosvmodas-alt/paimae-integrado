@@ -11,13 +11,14 @@ from app.models.routine import RoutineItem
 from app.models.user import User
 from app.schemas.routine import RoutineItemCreate, RoutineItemRead
 from app.services.audit import record_audit
-from app.services.permissions import ensure_child_access, scoped_child_ids_query
+from app.services.permissions import ensure_child_access, scoped_child_ids_query, ensure_school_staff
 
 router = APIRouter()
 
 
 @router.post("", response_model=RoutineItemRead, status_code=status.HTTP_201_CREATED)
 def create_routine(payload: RoutineItemCreate, db: Annotated[Session, Depends(get_db)], current_user: Annotated[User, Depends(get_current_user)]):
+    ensure_school_staff(current_user)
     child = ensure_child_access(db, current_user, payload.child_id, manage_routine=True)
     routine = RoutineItem(**payload.model_dump())
     db.add(routine)

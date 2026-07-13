@@ -478,7 +478,9 @@ function DashboardPage({
   const [isChildrenExpanded, setIsChildrenExpanded] = useState(false);
   const [isPedagogyExpanded, setIsPedagogyExpanded] = useState(false);
 
-  // Filtros de contagem para métricas
+  const showSchoolCreate = user?.role === "admin";
+  const showChildCreate = user?.role === "admin" || user?.role === "school";
+  const showPedagogyCreate = user?.role === "admin" || user?.role === "school";
   const selectedChild = childrenList.find((c) => c.id === selectedChildId);
 
   const sidebarContent = (
@@ -491,71 +493,77 @@ function DashboardPage({
       />
 
       {/* Accordion para cadastrar Escola */}
-      <div className="border border-border rounded-2xl overflow-hidden bg-surface">
-        <button
-          onClick={() => setIsSchoolsExpanded(!isSchoolsExpanded)}
-          className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <SchoolIcon className="w-4.5 h-4.5 text-primary" />
-            <span>Cadastros de Escolas</span>
-          </div>
-          {isSchoolsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
-        {isSchoolsExpanded && (
-          <div className="p-4 border-t border-border bg-background/20">
-            <SchoolCreateForm
-              onSubmit={(payload) => onSubmit("/api/v1/schools", payload, "Escola cadastrada com sucesso.")}
-            />
-          </div>
-        )}
-      </div>
+      {showSchoolCreate && (
+        <div className="border border-border rounded-2xl overflow-hidden bg-surface">
+          <button
+            onClick={() => setIsSchoolsExpanded(!isSchoolsExpanded)}
+            className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <SchoolIcon className="w-4.5 h-4.5 text-primary" />
+              <span>Cadastros de Escolas</span>
+            </div>
+            {isSchoolsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {isSchoolsExpanded && (
+            <div className="p-4 border-t border-border bg-background/20">
+              <SchoolCreateForm
+                onSubmit={(payload) => onSubmit("/api/v1/schools", payload, "Escola cadastrada com sucesso.")}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Accordion para cadastrar Criança */}
-      <div className="border border-border rounded-2xl overflow-hidden bg-surface">
-        <button
-          onClick={() => setIsChildrenExpanded(!isChildrenExpanded)}
-          className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <UserPlus className="w-4.5 h-4.5 text-primary" />
-            <span>Cadastros de Crianças</span>
-          </div>
-          {isChildrenExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
-        {isChildrenExpanded && (
-          <div className="p-4 border-t border-border bg-background/20">
-            <ChildCreateForm
-              schools={schools}
-              onSubmit={(payload) => onSubmit("/api/v1/children", payload, "Criança cadastrada com sucesso.")}
-            />
-          </div>
-        )}
-      </div>
+      {showChildCreate && (
+        <div className="border border-border rounded-2xl overflow-hidden bg-surface">
+          <button
+            onClick={() => setIsChildrenExpanded(!isChildrenExpanded)}
+            className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <UserPlus className="w-4.5 h-4.5 text-primary" />
+              <span>Cadastros de Crianças</span>
+            </div>
+            {isChildrenExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {isChildrenExpanded && (
+            <div className="p-4 border-t border-border bg-background/20">
+              <ChildCreateForm
+                schools={schools}
+                onSubmit={(payload) => onSubmit("/api/v1/children", payload, "Criança cadastrada com sucesso.")}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Accordion para cadastrar Material Didático */}
-      <div className="border border-border rounded-2xl overflow-hidden bg-surface">
-        <button
-          onClick={() => setIsPedagogyExpanded(!isPedagogyExpanded)}
-          className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4.5 h-4.5 text-primary" />
-            <span>Materiais Pedagógicos</span>
-          </div>
-          {isPedagogyExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
-        {isPedagogyExpanded && (
-          <div className="p-4 border-t border-border bg-background/20">
-            <PedagogicalMaterialForm
-              schoolId={selectedChild?.school_id}
-              schools={schools}
-              onSubmit={(payload) => onSubmit("/api/v1/pedagogy/materials", payload, "Material cadastrado com sucesso.")}
-              notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
-            />
-          </div>
-        )}
-      </div>
+      {showPedagogyCreate && (
+        <div className="border border-border rounded-2xl overflow-hidden bg-surface">
+          <button
+            onClick={() => setIsPedagogyExpanded(!isPedagogyExpanded)}
+            className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4.5 h-4.5 text-primary" />
+              <span>Materiais Pedagógicos</span>
+            </div>
+            {isPedagogyExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {isPedagogyExpanded && (
+            <div className="p-4 border-t border-border bg-background/20">
+              <PedagogicalMaterialForm
+                schoolId={selectedChild?.school_id}
+                schools={schools}
+                onSubmit={(payload) => onSubmit("/api/v1/pedagogy/materials", payload, "Material cadastrado com sucesso.")}
+                notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -598,16 +606,18 @@ function DashboardPage({
       ) : (
         <div className="flex flex-col gap-6">
           {/* Seção 1: Nova Rotina / Nova Tarefa */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RoutineCreateForm
-              childId={selectedChildId}
-              onSubmit={(payload) => onSubmit("/api/v1/routines", payload, "Rotina criada com sucesso.")}
-            />
-            <TaskCreateForm
-              childId={selectedChildId}
-              onSubmit={(payload) => onSubmit("/api/v1/tasks", payload, "Tarefa criada com sucesso.")}
-            />
-          </section>
+          {showPedagogyCreate && (
+            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <RoutineCreateForm
+                childId={selectedChildId}
+                onSubmit={(payload) => onSubmit("/api/v1/routines", payload, "Rotina criada com sucesso.")}
+              />
+              <TaskCreateForm
+                childId={selectedChildId}
+                onSubmit={(payload) => onSubmit("/api/v1/tasks", payload, "Tarefa criada com sucesso.")}
+              />
+            </section>
+          )}
 
           {/* Seção 2: Notificações / Evolução por IA */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -622,12 +632,15 @@ function DashboardPage({
                 );
               }}
               onCompleteNotification={onCompleteNotification}
+              showGenerateButton={showPedagogyCreate}
             />
             <div className="flex flex-col gap-6">
-              <EvolutionEventCreateForm
-                childId={selectedChildId}
-                onSubmit={(payload) => onSubmit("/api/v1/evolution-events", payload, "Evento de evolução registrado com sucesso.")}
-              />
+              {showPedagogyCreate && (
+                <EvolutionEventCreateForm
+                  childId={selectedChildId}
+                  onSubmit={(payload) => onSubmit("/api/v1/evolution-events", payload, "Evento de evolução registrado com sucesso.")}
+                />
+              )}
               <EvolutionSummary
                 childId={selectedChildId}
                 summaryText={summary}
@@ -641,12 +654,14 @@ function DashboardPage({
           </section>
 
           {/* Seção Pedagógica: Diário Escolar */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <DailyRecordForm
-              childId={selectedChildId}
-              onSubmit={(payload) => onSubmit("/api/v1/pedagogy/daily-records", payload, "Relatório pedagógico diário criado com sucesso.")}
-              notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
-            />
+          <section className={`grid gap-6 ${showPedagogyCreate ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+            {showPedagogyCreate && (
+              <DailyRecordForm
+                childId={selectedChildId}
+                onSubmit={(payload) => onSubmit("/api/v1/pedagogy/daily-records", payload, "Relatório pedagógico diário criado com sucesso.")}
+                notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
+              />
+            )}
             <DailyRecordList records={dailyRecords} />
           </section>
 

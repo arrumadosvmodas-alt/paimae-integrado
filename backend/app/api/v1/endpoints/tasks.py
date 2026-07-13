@@ -11,13 +11,14 @@ from app.models.task import Task
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskRead, TaskStatusUpdate
 from app.services.audit import record_audit
-from app.services.permissions import ensure_child_access, scoped_child_ids_query
+from app.services.permissions import ensure_child_access, scoped_child_ids_query, ensure_school_staff
 
 router = APIRouter()
 
 
 @router.post("", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
 def create_task(payload: TaskCreate, db: Annotated[Session, Depends(get_db)], current_user: Annotated[User, Depends(get_current_user)]):
+    ensure_school_staff(current_user)
     child = ensure_child_access(db, current_user, payload.child_id)
     task = Task(**payload.model_dump())
     db.add(task)
@@ -41,6 +42,7 @@ def list_tasks(db: Annotated[Session, Depends(get_db)], current_user: Annotated[
 
 @router.patch("/{task_id}/status", response_model=TaskRead)
 def update_task_status(task_id: UUID, payload: TaskStatusUpdate, db: Annotated[Session, Depends(get_db)], current_user: Annotated[User, Depends(get_current_user)]):
+    ensure_school_staff(current_user)
     task = db.get(Task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")

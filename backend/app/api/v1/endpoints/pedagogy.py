@@ -28,7 +28,7 @@ from app.schemas.pedagogy import (
     FamilyInteractionSuggestionRead,
 )
 from app.services.audit import record_audit
-from app.services.permissions import ensure_child_access, ensure_admin
+from app.services.permissions import ensure_child_access, ensure_admin, ensure_school_staff
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -258,6 +258,7 @@ def create_methodology(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
+    ensure_school_staff(current_user)
     if current_user.role != "admin" and str(current_user.school_id) != str(payload.school_id):
         raise HTTPException(status_code=403, detail="Sem permissão para esta escola.")
 
@@ -294,6 +295,7 @@ def create_material(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
+    ensure_school_staff(current_user)
     if current_user.role != "admin" and str(current_user.school_id) != str(payload.school_id):
         raise HTTPException(status_code=403, detail="Sem permissão para esta escola.")
 
@@ -348,6 +350,7 @@ def create_daily_record(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
+    ensure_school_staff(current_user)
     child = ensure_child_access(db, current_user, payload.child_id)
 
     record = DailySchoolRecord(

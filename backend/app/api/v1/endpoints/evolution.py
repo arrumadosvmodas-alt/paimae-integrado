@@ -11,13 +11,14 @@ from app.models.evolution import EvolutionEvent
 from app.models.user import User
 from app.schemas.evolution import EvolutionEventCreate, EvolutionEventRead
 from app.services.audit import record_audit
-from app.services.permissions import ensure_child_access
+from app.services.permissions import ensure_child_access, ensure_school_staff
 
 router = APIRouter()
 
 
 @router.post("", response_model=EvolutionEventRead, status_code=status.HTTP_201_CREATED)
 def create_event(payload: EvolutionEventCreate, db: Annotated[Session, Depends(get_db)], current_user: Annotated[User, Depends(get_current_user)]):
+    ensure_school_staff(current_user)
     child = ensure_child_access(db, current_user, payload.child_id)
     event = EvolutionEvent(**payload.model_dump())
     db.add(event)
