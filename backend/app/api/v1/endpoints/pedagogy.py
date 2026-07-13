@@ -34,19 +34,62 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+import urllib.request
+import urllib.error
+import json
+
+
 # --- ISBN LOOKUP ---
 @router.get("/isbn/{isbn}", status_code=status.HTTP_200_OK)
 def lookup_isbn(isbn: str, current_user: Annotated[User, Depends(get_current_user)]):
     """
-    Normaliza o ISBN e registra a tentativa.
-    Retorna metadados se for um ISBN simulado conhecido, caso contrário retorna 404
-    exigindo inserção manual no frontend.
+    Normaliza o ISBN, consulta a API do Google Books e registra a tentativa.
+    Caso não localize na API, faz o fallback para uma lista mockada.
+    Se ainda assim não encontrar, retorna 404.
     """
-    # Normalização: remove hífens, espaços e deixa em maiúsculo
     normalized_isbn = re.sub(r"[-\s]", "", isbn).upper()
-    logger.info(f"Tentativa de busca de ISBN registrada: {normalized_isbn} pelo usuario {current_user.email}")
+    logger.info(f"Busca de ISBN em execucao: {normalized_isbn} pelo usuario {current_user.email}")
 
-    # Mock de banco de dados externo para teste
+    # 1. Consulta à API externa do Google Books
+    try:
+        url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{normalized_isbn}"
+        req = urllib.request.Request(
+            url, 
+            headers={"User-Agent": "PaiMaeIntegrado-PedagogyApp/1.0"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            res_data = json.loads(response.read().decode())
+            if res_data.get("totalItems", 0) > 0:
+                volume_info = res_data["items"][0]["volumeInfo"]
+                
+                title = volume_info.get("title", "")
+                authors = volume_info.get("authors", [])
+                author = ", ".join(authors) if authors else "Autor Desconhecido"
+                
+                # Assunto derivado de categorias
+                categories = volume_info.get("categories", [])
+                subject = categories[0] if categories else "Geral"
+                
+                # Descrição vira objetivos
+                description = volume_info.get("description", "")
+                objectives = description[:300] + "..." if len(description) > 300 else description
+                
+                return {
+                    "resolved": True,
+                    "isbn": normalized_isbn,
+                    "data": {
+                        "title": title,
+                        "author": author,
+                        "subject": subject,
+                        "pedagogical_line": "A definir pela escola",
+                        "objectives": objectives or "Objetivos pedagógicos a serem definidos.",
+                        "family_orientation": "Acompanhar leitura conjunta e revisar atividades escolares.",
+                    }
+                }
+    except Exception as e:
+        logger.error(f"Erro ao buscar ISBN no Google Books: {e}")
+
+    # 2. Fallback para banco mockado de teste
     mock_db = {
         "9788532283215": {
             "title": "Português Compartilhado",
@@ -75,8 +118,9 @@ def lookup_isbn(isbn: str, current_user: Annotated[User, Depends(get_current_use
 
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail="ISBN não localizado na base nacional. Informe os dados manualmente."
+        detail="ISBN não localizado nas bases de dados. Informe os dados manualmente."
     )
+
 
 
 # --- METHODOLOGIES ---
