@@ -71,43 +71,77 @@ def lookup_isbn(
             detail="Nenhuma escola cadastrada ou vinculada encontrada para associar o livro."
         )
 
-    # 1. Consulta à API externa da Open Library (Sem limites severos de 429)
+    # 1. Consulta à API nacional do BrasilAPI (Excelente para acervo brasileiro da CBL)
     resolved_data = None
     try:
         import ssl
         ssl_context = ssl._create_unverified_context()
-        url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{normalized_isbn}&format=json&jscmd=data"
+        url = f"https://brasilapi.com.br/api/isbn/v1/{normalized_isbn}"
         req = urllib.request.Request(
             url, 
             headers={"User-Agent": "PaiMaeIntegrado-PedagogyApp/1.0"}
         )
         with urllib.request.urlopen(req, timeout=5, context=ssl_context) as response:
-            res_data = json.loads(response.read().decode())
-            key = f"ISBN:{normalized_isbn}"
-            if key in res_data:
-                book_info = res_data[key]
-                title = book_info.get("title", "")
-                authors_list = book_info.get("authors", [])
-                author = ", ".join([a.get("name", "") for a in authors_list]) if authors_list else "Autor Desconhecido"
-                
-                # Assunto derivado de subjects
-                subjects = book_info.get("subjects", [])
-                subject = subjects[0].get("name", "Geral") if subjects else "Geral"
-                
-                # Descrição / notas
-                notes = book_info.get("notes", "")
-                objectives = notes[:300] + "..." if len(notes) > 300 else notes
-                
-                resolved_data = {
-                    "title": title,
-                    "author": author,
-                    "subject": subject,
-                    "pedagogical_line": "A definir pela escola",
-                    "objectives": objectives or "Objetivos pedagógicos a serem definidos.",
-                    "family_orientation": "Acompanhar leitura conjunta e revisar atividades escolares.",
-                }
+            res_data = json.loads(response.read().decode("utf-8"))
+            title = res_data.get("title", "")
+            authors = res_data.get("authors", [])
+            author = ", ".join(authors) if authors else "Autor Desconhecido"
+            
+            subjects = res_data.get("subjects", [])
+            subject = subjects[0] if subjects else "Geral"
+            
+            synopsis = res_data.get("synopsis", "")
+            objectives = synopsis[:300] + "..." if synopsis and len(synopsis) > 300 else (synopsis or "Objetivos pedagógicos a serem definidos.")
+            
+            resolved_data = {
+                "title": title,
+                "author": author,
+                "subject": subject,
+                "pedagogical_line": "A definir pela escola",
+                "objectives": objectives,
+                "family_orientation": "Acompanhar leitura conjunta e revisar atividades escolares.",
+            }
+            logger.info(f"ISBN {normalized_isbn} resolvido com sucesso pela BrasilAPI")
     except Exception as e:
-        logger.error(f"Erro ao buscar ISBN no Open Library: {e}")
+        logger.error(f"Erro ao buscar ISBN na BrasilAPI: {e}")
+
+    # 2. Consulta à API externa da Open Library (Se BrasilAPI falhou ou não encontrou)
+    if not resolved_data:
+        try:
+            import ssl
+            ssl_context = ssl._create_unverified_context()
+            url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{normalized_isbn}&format=json&jscmd=data"
+            req = urllib.request.Request(
+                url, 
+                headers={"User-Agent": "PaiMaeIntegrado-PedagogyApp/1.0"}
+            )
+            with urllib.request.urlopen(req, timeout=5, context=ssl_context) as response:
+                res_data = json.loads(response.read().decode())
+                key = f"ISBN:{normalized_isbn}"
+                if key in res_data:
+                    book_info = res_data[key]
+                    title = book_info.get("title", "")
+                    authors_list = book_info.get("authors", [])
+                    author = ", ".join([a.get("name", "") for a in authors_list]) if authors_list else "Autor Desconhecido"
+                    
+                    # Assunto derivado de subjects
+                    subjects = book_info.get("subjects", [])
+                    subject = subjects[0].get("name", "Geral") if subjects else "Geral"
+                    
+                    # Descrição / notas
+                    notes = book_info.get("notes", "")
+                    objectives = notes[:300] + "..." if len(notes) > 300 else notes
+                    
+                    resolved_data = {
+                        "title": title,
+                        "author": author,
+                        "subject": subject,
+                        "pedagogical_line": "A definir pela school",
+                        "objectives": objectives or "Objetivos pedagógicos a serem definidos.",
+                        "family_orientation": "Acompanhar leitura conjunta e revisar atividades escolares.",
+                    }
+        except Exception as e:
+            logger.error(f"Erro ao buscar ISBN no Open Library: {e}")
 
     # 2. Fallback para Google Books se Open Library falhou ou não encontrou
     if not resolved_data:
