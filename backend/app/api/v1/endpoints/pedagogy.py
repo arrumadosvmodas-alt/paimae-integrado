@@ -212,7 +212,7 @@ def lookup_isbn(
 
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail="ISBN não localizado nas bases de dados. Informe os dados manualmente."
+        detail="ISBN não localizado na base global de livros (Open Library e Google Books). Por favor, preencha os dados do livro manualmente abaixo."
     )
 
 
