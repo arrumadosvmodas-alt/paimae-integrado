@@ -71,32 +71,32 @@ def lookup_isbn(
             detail="Nenhuma escola cadastrada ou vinculada encontrada para associar o livro."
         )
 
-    # 1. Consulta à API externa do Google Books
+    # 1. Consulta à API externa da Open Library (Sem limites severos de 429)
     resolved_data = None
     try:
         import ssl
         ssl_context = ssl._create_unverified_context()
-        url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{normalized_isbn}"
+        url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{normalized_isbn}&format=json&jscmd=data"
         req = urllib.request.Request(
             url, 
             headers={"User-Agent": "PaiMaeIntegrado-PedagogyApp/1.0"}
         )
         with urllib.request.urlopen(req, timeout=5, context=ssl_context) as response:
             res_data = json.loads(response.read().decode())
-            if res_data.get("totalItems", 0) > 0:
-                volume_info = res_data["items"][0]["volumeInfo"]
+            key = f"ISBN:{normalized_isbn}"
+            if key in res_data:
+                book_info = res_data[key]
+                title = book_info.get("title", "")
+                authors_list = book_info.get("authors", [])
+                author = ", ".join([a.get("name", "") for a in authors_list]) if authors_list else "Autor Desconhecido"
                 
-                title = volume_info.get("title", "")
-                authors = volume_info.get("authors", [])
-                author = ", ".join(authors) if authors else "Autor Desconhecido"
+                # Assunto derivado de subjects
+                subjects = book_info.get("subjects", [])
+                subject = subjects[0].get("name", "Geral") if subjects else "Geral"
                 
-                # Assunto derivado de categorias
-                categories = volume_info.get("categories", [])
-                subject = categories[0] if categories else "Geral"
-                
-                # Descrição vira objetivos
-                description = volume_info.get("description", "")
-                objectives = description[:300] + "..." if len(description) > 300 else description
+                # Descrição / notas
+                notes = book_info.get("notes", "")
+                objectives = notes[:300] + "..." if len(notes) > 300 else notes
                 
                 resolved_data = {
                     "title": title,
@@ -107,9 +107,47 @@ def lookup_isbn(
                     "family_orientation": "Acompanhar leitura conjunta e revisar atividades escolares.",
                 }
     except Exception as e:
-        logger.error(f"Erro ao buscar ISBN no Google Books: {e}")
+        logger.error(f"Erro ao buscar ISBN no Open Library: {e}")
 
-    # 2. Fallback para banco mockado de teste
+    # 2. Fallback para Google Books se Open Library falhou ou não encontrou
+    if not resolved_data:
+        try:
+            import ssl
+            ssl_context = ssl._create_unverified_context()
+            url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{normalized_isbn}"
+            req = urllib.request.Request(
+                url, 
+                headers={"User-Agent": "PaiMaeIntegrado-PedagogyApp/1.0"}
+            )
+            with urllib.request.urlopen(req, timeout=5, context=ssl_context) as response:
+                res_data = json.loads(response.read().decode())
+                if res_data.get("totalItems", 0) > 0:
+                    volume_info = res_data["items"][0]["volumeInfo"]
+                    
+                    title = volume_info.get("title", "")
+                    authors = volume_info.get("authors", [])
+                    author = ", ".join(authors) if authors else "Autor Desconhecido"
+                    
+                    # Assunto derivado de categorias
+                    categories = volume_info.get("categories", [])
+                    subject = categories[0] if categories else "Geral"
+                    
+                    # Descrição vira objetivos
+                    description = volume_info.get("description", "")
+                    objectives = description[:300] + "..." if len(description) > 300 else description
+                    
+                    resolved_data = {
+                        "title": title,
+                        "author": author,
+                        "subject": subject,
+                        "pedagogical_line": "A definir pela escola",
+                        "objectives": objectives or "Objetivos pedagógicos a serem definidos.",
+                        "family_orientation": "Acompanhar leitura conjunta e revisar atividades escolares.",
+                    }
+        except Exception as e:
+            logger.error(f"Erro ao buscar ISBN no Google Books: {e}")
+
+    # 3. Fallback para banco mockado de teste
     if not resolved_data:
         mock_db = {
             "9788532283215": {
