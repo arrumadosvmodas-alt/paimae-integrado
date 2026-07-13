@@ -7,6 +7,13 @@ from app.models.routine import RoutineItem
 from app.models.school import School
 from app.models.task import Task
 from app.models.user import User
+from app.models.pedagogy import (
+    PedagogicalMethodology,
+    PedagogicalMaterial,
+    MaterialItem,
+    DailySchoolRecord,
+    FamilyInteractionSuggestion,
+)
 
 __all__ = [
     "AuditLog",
@@ -18,5 +25,10 @@ __all__ = [
     "School",
     "Task",
     "User",
+    "PedagogicalMethodology",
+    "PedagogicalMaterial",
+    "MaterialItem",
+    "DailySchoolRecord",
+    "FamilyInteractionSuggestion",
 ]
 

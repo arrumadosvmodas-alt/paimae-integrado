@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-route
 import { Bell, BookOpen, ClipboardList, GraduationCap, Sparkles, UserPlus, School as SchoolIcon, LayoutDashboard, ChevronDown, ChevronUp } from "lucide-react";
 
 import { api, getToken, login, setToken } from "./lib/api";
-import type { Child, EvolutionEvent, Notification, Routine, School, Task, User } from "./lib/types";
+import type { Child, EvolutionEvent, Notification, Routine, School, Task, User, DailySchoolRecord, PedagogicalMaterial } from "./lib/types";
 
 // Componentes do Design System UI
 import { Button } from "./components/ui/Button";
@@ -29,6 +29,11 @@ import { NotificationList } from "./components/domains/notification/Notification
 import { EvolutionEventCreateForm } from "./components/domains/evolution/EvolutionEventCreateForm";
 import { EvolutionSummary } from "./components/domains/evolution/EvolutionSummary";
 
+// Módulo Pedagógico
+import { PedagogicalMaterialForm } from "./components/domains/pedagogy/PedagogicalMaterialForm";
+import { DailyRecordForm } from "./components/domains/pedagogy/DailyRecordForm";
+import { DailyRecordList } from "./components/domains/pedagogy/DailyRecordList";
+
 export function App() {
   return (
     <ThemeProvider>
@@ -51,6 +56,8 @@ function AppRoutes() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<EvolutionEvent[]>([]);
+  const [dailyRecords, setDailyRecords] = useState<DailySchoolRecord[]>([]);
+  const [materials, setMaterials] = useState<PedagogicalMaterial[]>([]);
   const [selectedChildId, setSelectedChildId] = useState("");
   const [summary, setSummary] = useState("");
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
@@ -92,20 +99,33 @@ function AppRoutes() {
       setNotifications([]);
       setTasks([]);
       setEvents([]);
+      setDailyRecords([]);
+      setMaterials([]);
       setSummary("");
       return;
     }
     try {
-      const [routineList, notificationList, taskList, eventList] = await Promise.all([
+      const [routineList, notificationList, taskList, eventList, dailyRecordList] = await Promise.all([
         api<Routine[]>(`/api/v1/routines?child_id=${childId}`),
         api<Notification[]>(`/api/v1/notifications?child_id=${childId}`),
         api<Task[]>(`/api/v1/tasks?child_id=${childId}`),
         api<EvolutionEvent[]>(`/api/v1/evolution-events?child_id=${childId}`),
+        api<DailySchoolRecord[]>(`/api/v1/pedagogy/daily-records?child_id=${childId}`).catch(() => []),
       ]);
       setRoutines(routineList);
       setNotifications(notificationList);
       setTasks(taskList);
       setEvents(eventList);
+      setDailyRecords(dailyRecordList);
+
+      const activeChild = children.find(c => c.id === childId);
+      if (activeChild) {
+        const materialList = await api<PedagogicalMaterial[]>(`/api/v1/pedagogy/materials?school_id=${activeChild.school_id}`).catch(() => []);
+        setMaterials(materialList);
+      } else {
+        setMaterials([]);
+      }
+
       setSummary(""); // Limpa o resumo de IA da criança anterior
     } catch (error) {
       notify(error instanceof Error ? error.message : "Erro ao carregar dados da criança.", "error");
@@ -206,12 +226,14 @@ function AppRoutes() {
                 routines={routines}
                 notifications={notifications}
                 tasks={tasks}
+                dailyRecords={dailyRecords}
                 summary={summary}
                 isLoadingData={isLoadingData}
                 onLogout={handleLogout}
                 onSubmit={submit}
                 onCompleteNotification={handleCompleteNotification}
                 onGenerateAISummary={handleGenerateAISummary}
+                notify={notify}
               />
             )
           }
@@ -423,12 +445,14 @@ interface DashboardPageProps {
   routines: Routine[];
   notifications: Notification[];
   tasks: Task[];
+  dailyRecords: DailySchoolRecord[];
   summary: string;
   isLoadingData: boolean;
   onLogout: () => void;
   onSubmit: (path: string, payload: unknown, successMsg: string) => Promise<void>;
   onCompleteNotification: (id: string) => Promise<void>;
   onGenerateAISummary: () => Promise<void>;
+  notify: (msg: string, type?: ToastType) => void;
 }
 
 function DashboardPage({
@@ -440,15 +464,18 @@ function DashboardPage({
   routines,
   notifications,
   tasks,
+  dailyRecords,
   summary,
   isLoadingData,
   onLogout,
   onSubmit,
   onCompleteNotification,
   onGenerateAISummary,
+  notify,
 }: DashboardPageProps) {
   const [isSchoolsExpanded, setIsSchoolsExpanded] = useState(false);
   const [isChildrenExpanded, setIsChildrenExpanded] = useState(false);
+  const [isPedagogyExpanded, setIsPedagogyExpanded] = useState(false);
 
   // Filtros de contagem para métricas
   const selectedChild = childrenList.find((c) => c.id === selectedChildId);
@@ -500,6 +527,29 @@ function DashboardPage({
             <ChildCreateForm
               schools={schools}
               onSubmit={(payload) => onSubmit("/api/v1/children", payload, "Criança cadastrada com sucesso.")}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Accordion para cadastrar Material Didático */}
+      <div className="border border-border rounded-2xl overflow-hidden bg-surface">
+        <button
+          onClick={() => setIsPedagogyExpanded(!isPedagogyExpanded)}
+          className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4.5 h-4.5 text-primary" />
+            <span>Materiais Pedagógicos</span>
+          </div>
+          {isPedagogyExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+        {isPedagogyExpanded && (
+          <div className="p-4 border-t border-border bg-background/20">
+            <PedagogicalMaterialForm
+              schoolId={selectedChild?.school_id}
+              onSubmit={(payload) => onSubmit("/api/v1/pedagogy/materials", payload, "Material cadastrado com sucesso.")}
+              notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
             />
           </div>
         )}
@@ -582,6 +632,16 @@ function DashboardPage({
                 onGenerateSummary={onGenerateAISummary}
               />
             </div>
+          </section>
+
+          {/* Seção Pedagógica: Diário Escolar */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <DailyRecordForm
+              childId={selectedChildId}
+              onSubmit={(payload) => onSubmit("/api/v1/pedagogy/daily-records", payload, "Relatório pedagógico diário criado com sucesso.")}
+              notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
+            />
+            <DailyRecordList records={dailyRecords} />
           </section>
 
           {/* Seção 3: Visualização em Listas / Tabelas */}

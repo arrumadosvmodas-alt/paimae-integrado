@@ -58,3 +58,49 @@ export type User = {
   school_id: string | null;
 };
 
+export type PedagogicalMethodology = {
+  id: string;
+  school_id: string;
+  name: string;
+  description: string | null;
+};
+
+export type MaterialItem = {
+  id: string;
+  material_id: string;
+  chapter: string | null;
+  page: string | null;
+  theme: string;
+  description: string | null;
+};
+
+export type PedagogicalMaterial = {
+  id: string;
+  school_id: string;
+  title: string;
+  author: string | null;
+  isbn: string | null;
+  subject: string;
+  pedagogical_line: string;
+  objectives: string | null;
+  family_orientation: string | null;
+  items: MaterialItem[];
+};
+
+export type FamilyInteractionSuggestion = {
+  id: string;
+  daily_record_id: string;
+  suggestion_text: string;
+};
+
+export type DailySchoolRecord = {
+  id: string;
+  child_id: string;
+  date: string;
+  summary: string;
+  observed_skills: string | null;
+  engagement_score: number | null;
+  suggestions: FamilyInteractionSuggestion[];
+};
+
+
