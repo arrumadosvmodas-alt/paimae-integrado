@@ -1,16 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "../../ui/Card";
 import { Input, Textarea } from "../../ui/Input";
 import { Button } from "../../ui/Button";
-import { ClipboardList, Plus, Trash2 } from "lucide-react";
+import { ClipboardList, Plus, Trash2, X } from "lucide-react";
+import type { DailySchoolRecord } from "../../../lib/types";
 
 interface DailyRecordFormProps {
   childId?: string;
+  recordToEdit?: DailySchoolRecord | null;
+  onCancelEdit?: () => void;
   onSubmit: (payload: any) => Promise<void>;
   notify: (msg: string, type?: "ok" | "error") => void;
 }
 
-export function DailyRecordForm({ childId, onSubmit, notify }: DailyRecordFormProps) {
+export function DailyRecordForm({ childId, recordToEdit, onCancelEdit, onSubmit, notify }: DailyRecordFormProps) {
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [summary, setSummary] = useState("");
   const [observedSkills, setObservedSkills] = useState("");
@@ -20,6 +23,22 @@ export function DailyRecordForm({ childId, onSubmit, notify }: DailyRecordFormPr
   // Sugestões de interação com a família
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [newSuggestion, setNewSuggestion] = useState("");
+
+  useEffect(() => {
+    if (recordToEdit) {
+      setDate(recordToEdit.date);
+      setSummary(recordToEdit.summary);
+      setObservedSkills(recordToEdit.observed_skills || "");
+      setEngagementScore(String(recordToEdit.engagement_score || 5));
+      setSuggestions(recordToEdit.suggestions?.map(s => s.suggestion_text) || []);
+    } else {
+      setDate(new Date().toISOString().split("T")[0]);
+      setSummary("");
+      setObservedSkills("");
+      setEngagementScore("5");
+      setSuggestions([]);
+    }
+  }, [recordToEdit]);
 
   const handleAddSuggestion = () => {
     if (!newSuggestion.trim()) return;
@@ -33,32 +52,50 @@ export function DailyRecordForm({ childId, onSubmit, notify }: DailyRecordFormPr
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!childId || !summary.trim() || !date) {
+    if (!summary.trim() || !date) {
       notify("Preencha a data e o resumo do dia escolar.", "error");
       return;
     }
 
     setIsLoading(true);
     try {
-      await onSubmit({
-        child_id: childId,
-        date: date,
-        summary: summary.trim(),
-        observed_skills: observedSkills.trim() || null,
-        engagement_score: Number(engagementScore),
-        suggestions: suggestions.map(text => ({ suggestion_text: text }))
-      });
-      setSummary("");
-      setObservedSkills("");
-      setEngagementScore("5");
-      setSuggestions([]);
+      if (recordToEdit) {
+        await onSubmit({
+          id: recordToEdit.id,
+          date: date,
+          summary: summary.trim(),
+          observed_skills: observedSkills.trim() || null,
+          engagement_score: Number(engagementScore),
+          suggestions: suggestions.map(text => ({ suggestion_text: text }))
+        });
+      } else {
+        if (!childId) {
+          notify("Selecione uma criança para cadastrar.", "error");
+          return;
+        }
+        await onSubmit({
+          child_id: childId,
+          date: date,
+          summary: summary.trim(),
+          observed_skills: observedSkills.trim() || null,
+          engagement_score: Number(engagementScore),
+          suggestions: suggestions.map(text => ({ suggestion_text: text }))
+        });
+        setSummary("");
+        setObservedSkills("");
+        setEngagementScore("5");
+        setSuggestions([]);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Card title="Relatório Pedagógico Diário" icon={<ClipboardList className="w-5 h-5 text-primary" />}>
+    <Card 
+      title={recordToEdit ? "Editar Relatório Diário" : "Relatório Pedagógico Diário"} 
+      icon={<ClipboardList className="w-5 h-5 text-primary" />}
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-4">
           <Input
@@ -67,7 +104,7 @@ export function DailyRecordForm({ childId, onSubmit, notify }: DailyRecordFormPr
             value={date}
             onChange={(e) => setDate(e.target.value)}
             required
-            disabled={isLoading || !childId}
+            disabled={isLoading || (!childId && !recordToEdit)}
           />
           <div>
             <label className="block text-xs font-bold text-text-primary uppercase tracking-wider mb-1.5">
@@ -76,7 +113,7 @@ export function DailyRecordForm({ childId, onSubmit, notify }: DailyRecordFormPr
             <select
               value={engagementScore}
               onChange={(e) => setEngagementScore(e.target.value)}
-              disabled={isLoading || !childId}
+              disabled={isLoading || (!childId && !recordToEdit)}
               className="w-full h-10 px-3 border border-border rounded-lg bg-surface text-text-primary focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition-all duration-200 text-sm"
             >
               <option value="5">5 - Excelente</option>
@@ -90,11 +127,11 @@ export function DailyRecordForm({ childId, onSubmit, notify }: DailyRecordFormPr
 
         <Textarea
           label="Resumo das Atividades Escolares *"
-          placeholder="Ex: Hoje trabalhamos caligrafia da letra B e aprendemos a contar até 30..."
+          placeholder="Ex: Hoje trabalhamos caligrafia da letra B e aprendemos a conta até 30..."
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           required
-          disabled={isLoading || !childId}
+          disabled={isLoading || (!childId && !recordToEdit)}
         />
 
         <Input
@@ -102,7 +139,7 @@ export function DailyRecordForm({ childId, onSubmit, notify }: DailyRecordFormPr
           placeholder="Ex: Coordenação Motora, Foco, Escuta Atenta"
           value={observedSkills}
           onChange={(e) => setObservedSkills(e.target.value)}
-          disabled={isLoading || !childId}
+          disabled={isLoading || (!childId && !recordToEdit)}
         />
 
         {/* Sugestões de interação com os pais */}
@@ -117,13 +154,13 @@ export function DailyRecordForm({ childId, onSubmit, notify }: DailyRecordFormPr
                 placeholder="Ex: Perguntar qual historinha foi contada hoje..."
                 value={newSuggestion}
                 onChange={(e) => setNewSuggestion(e.target.value)}
-                disabled={!childId}
+                disabled={!childId && !recordToEdit}
               />
             </div>
             <Button
               type="button"
               onClick={handleAddSuggestion}
-              disabled={!newSuggestion.trim() || !childId}
+              disabled={!newSuggestion.trim() || (!childId && !recordToEdit)}
               variant="outline"
               className="h-10 flex items-center justify-center gap-1"
             >
@@ -145,14 +182,27 @@ export function DailyRecordForm({ childId, onSubmit, notify }: DailyRecordFormPr
           )}
         </div>
 
-        <Button
-          type="submit"
-          isLoading={isLoading}
-          disabled={!childId}
-          className="w-full mt-2"
-        >
-          {childId ? "Registrar Relatório Diário" : "Selecione uma criança primeiro"}
-        </Button>
+        <div className="flex gap-2 mt-2">
+          {recordToEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancelEdit}
+              disabled={isLoading}
+              className="w-1/3 flex items-center justify-center gap-1"
+            >
+              <X className="w-4 h-4" /> Cancelar
+            </Button>
+          )}
+          <Button
+            type="submit"
+            isLoading={isLoading}
+            disabled={!childId && !recordToEdit}
+            className="flex-1"
+          >
+            {recordToEdit ? "Salvar Alterações" : childId ? "Registrar Relatório Diário" : "Selecione uma criança primeiro"}
+          </Button>
+        </div>
       </form>
     </Card>
   );

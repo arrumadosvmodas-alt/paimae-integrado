@@ -11,6 +11,7 @@ export type Child = {
   birth_date: string | null;
   school_id: string;
   class_name: string | null;
+  is_active?: boolean;
 };
 
 export type Routine = {
@@ -56,6 +57,7 @@ export type User = {
   email: string;
   role: string;
   school_id: string | null;
+  is_active?: boolean;
 };
 
 export type PedagogicalMethodology = {
@@ -63,6 +65,7 @@ export type PedagogicalMethodology = {
   school_id: string;
   name: string;
   description: string | null;
+  is_active?: boolean;
 };
 
 export type MaterialItem = {
@@ -85,6 +88,7 @@ export type PedagogicalMaterial = {
   objectives: string | null;
   family_orientation: string | null;
   items: MaterialItem[];
+  is_active?: boolean;
 };
 
 export type FamilyInteractionSuggestion = {
@@ -101,6 +105,7 @@ export type DailySchoolRecord = {
   observed_skills: string | null;
   engagement_score: number | null;
   suggestions: FamilyInteractionSuggestion[];
+  is_active?: boolean;
 };
 
 

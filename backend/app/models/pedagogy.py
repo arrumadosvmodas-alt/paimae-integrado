@@ -15,6 +15,7 @@ class PedagogicalMethodology(IdMixin, TimestampMixin, Base):
     school_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("schools.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     school = relationship("School")
 
@@ -30,6 +31,7 @@ class PedagogicalMaterial(IdMixin, TimestampMixin, Base):
     pedagogical_line: Mapped[str] = mapped_column(String(100), nullable=False)  # ex: Construtivista, Montessori
     objectives: Mapped[str | None] = mapped_column(Text)
     family_orientation: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     school = relationship("School")
     items = relationship("MaterialItem", back_populates="material", cascade="all, delete-orphan")
@@ -55,6 +57,7 @@ class DailySchoolRecord(IdMixin, TimestampMixin, Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False)  # resumo do dia
     observed_skills: Mapped[str | None] = mapped_column(Text)  # habilidades observadas no dia
     engagement_score: Mapped[int | None] = mapped_column(Integer)  # nota de engajamento do dia (1 a 5)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     child = relationship("Child")
     suggestions = relationship("FamilyInteractionSuggestion", back_populates="daily_record", cascade="all, delete-orphan")

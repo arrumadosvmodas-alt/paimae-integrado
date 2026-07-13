@@ -1,26 +1,43 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "../../ui/Card";
 import { Input, Select } from "../../ui/Input";
 import { Button } from "../../ui/Button";
-import { UserPlus } from "lucide-react";
+import { UserPlus, X } from "lucide-react";
 import type { School } from "../../../lib/types";
 
 interface ChildCreateFormProps {
   schools: School[];
   onSubmit: (payload: {
+    id?: string;
     full_name: string;
     birth_date: string | null;
     school_id: string;
     class_name: string | null;
   }) => Promise<void>;
+  childToEdit?: any | null;
+  onCancelEdit?: () => void;
 }
 
-export function ChildCreateForm({ schools, onSubmit }: ChildCreateFormProps) {
+export function ChildCreateForm({ schools, onSubmit, childToEdit, onCancelEdit }: ChildCreateFormProps) {
   const [fullName, setFullName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [schoolId, setSchoolId] = useState("");
   const [classNameVal, setClassNameVal] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (childToEdit) {
+      setFullName(childToEdit.full_name || "");
+      setBirthDate(childToEdit.birth_date || "");
+      setSchoolId(childToEdit.school_id || "");
+      setClassNameVal(childToEdit.class_name || "");
+    } else {
+      setFullName("");
+      setBirthDate("");
+      setSchoolId(schools.length > 0 ? schools[0].id : "");
+      setClassNameVal("");
+    }
+  }, [childToEdit, schools]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -28,26 +45,39 @@ export function ChildCreateForm({ schools, onSubmit }: ChildCreateFormProps) {
 
     setIsLoading(true);
     try {
-      await onSubmit({
-        full_name: fullName.trim(),
-        birth_date: birthDate || null,
-        school_id: schoolId,
-        class_name: classNameVal.trim() || null,
-      });
-      setFullName("");
-      setBirthDate("");
-      setSchoolId("");
-      setClassNameVal("");
+      if (childToEdit) {
+        await onSubmit({
+          id: childToEdit.id,
+          full_name: fullName.trim(),
+          birth_date: birthDate || null,
+          school_id: schoolId,
+          class_name: classNameVal.trim() || null,
+        });
+      } else {
+        await onSubmit({
+          full_name: fullName.trim(),
+          birth_date: birthDate || null,
+          school_id: schoolId,
+          class_name: classNameVal.trim() || null,
+        });
+        setFullName("");
+        setBirthDate("");
+        setSchoolId("");
+        setClassNameVal("");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Card title="Nova Criança" icon={<UserPlus className="w-5 h-5 text-primary" />}>
+    <Card 
+      title={childToEdit ? "Editar Criança" : "Nova Criança"} 
+      icon={<UserPlus className="w-5 h-5 text-primary" />}
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
-          label="Nome Completo"
+          label="Nome Completo *"
           placeholder="Ex: João Silva Santos"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
@@ -62,7 +92,7 @@ export function ChildCreateForm({ schools, onSubmit }: ChildCreateFormProps) {
           disabled={isLoading}
         />
         <Select
-          label="Escola"
+          label="Escola *"
           value={schoolId}
           onChange={(e) => setSchoolId(e.target.value)}
           placeholder="Selecione a escola"
@@ -82,9 +112,23 @@ export function ChildCreateForm({ schools, onSubmit }: ChildCreateFormProps) {
           onChange={(e) => setClassNameVal(e.target.value)}
           disabled={isLoading}
         />
-        <Button type="submit" isLoading={isLoading} className="w-full">
-          Cadastrar Criança
-        </Button>
+        
+        <div className="flex gap-2">
+          {childToEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancelEdit}
+              disabled={isLoading}
+              className="w-1/3 flex items-center justify-center gap-1"
+            >
+              <X className="w-4 h-4" /> Cancelar
+            </Button>
+          )}
+          <Button type="submit" isLoading={isLoading} className="flex-1">
+            {childToEdit ? "Salvar Alterações" : "Cadastrar Criança"}
+          </Button>
+        </div>
       </form>
     </Card>
   );

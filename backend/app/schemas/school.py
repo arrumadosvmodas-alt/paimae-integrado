@@ -13,3 +13,8 @@ class SchoolRead(Timestamped):
     document: str | None
     is_active: bool
 
+
+class SchoolUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=180)
+    document: str | None = Field(default=None, max_length=32)
+

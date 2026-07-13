@@ -17,6 +17,12 @@ class PedagogicalMethodologyRead(Timestamped):
     school_id: UUID
     name: str
     description: str | None
+    is_active: bool
+
+
+class PedagogicalMethodologyUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    description: str | None = None
 
 
 # --- ITENS DO MATERIAL ---
@@ -58,6 +64,18 @@ class PedagogicalMaterialRead(Timestamped):
     objectives: str | None
     family_orientation: str | None
     items: list[MaterialItemRead]
+    is_active: bool
+
+
+class PedagogicalMaterialUpdate(BaseModel):
+    title: str = Field(min_length=2, max_length=180)
+    author: str | None = Field(default=None, max_length=100)
+    isbn: str | None = Field(default=None, max_length=20)
+    subject: str = Field(min_length=2, max_length=80)
+    pedagogical_line: str = Field(min_length=2, max_length=100)
+    objectives: str | None = None
+    family_orientation: str | None = None
+    items: list[MaterialItemCreate] | None = None
 
 
 # --- INTERAÇÃO FAMILIAR ---
@@ -87,3 +105,11 @@ class DailySchoolRecordRead(Timestamped):
     observed_skills: str | None
     engagement_score: int | None
     suggestions: list[FamilyInteractionSuggestionRead]
+    is_active: bool
+
+
+class DailySchoolRecordUpdate(BaseModel):
+    summary: str = Field(min_length=5)
+    observed_skills: str | None = None
+    engagement_score: int | None = Field(default=None, ge=1, le=5)
+    suggestions: list[FamilyInteractionSuggestionCreate] | None = None
