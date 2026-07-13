@@ -53,7 +53,7 @@ def lookup_isbn(
     Caso não localize na API, faz o fallback para uma lista mockada.
     Se ainda assim não encontrar, retorna 404.
     """
-    normalized_isbn = re.sub(r"[-\s]", "", isbn).upper()
+    normalized_isbn = re.sub(r"[^0-9X]", "", isbn.upper())
     logger.info(f"Busca de ISBN em execucao: {normalized_isbn} pelo usuario {current_user.email}")
 
     # Determinar escola de destino
