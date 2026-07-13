@@ -41,16 +41,38 @@ import json
 
 # --- ISBN LOOKUP ---
 @router.get("/isbn/{isbn}", status_code=status.HTTP_200_OK)
-def lookup_isbn(isbn: str, current_user: Annotated[User, Depends(get_current_user)]):
+def lookup_isbn(
+    isbn: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    school_id: UUID | None = None
+):
     """
     Normaliza o ISBN, consulta a API do Google Books e registra a tentativa.
+    Salva o livro encontrado automaticamente no banco de dados para a escola informada.
     Caso não localize na API, faz o fallback para uma lista mockada.
     Se ainda assim não encontrar, retorna 404.
     """
     normalized_isbn = re.sub(r"[-\s]", "", isbn).upper()
     logger.info(f"Busca de ISBN em execucao: {normalized_isbn} pelo usuario {current_user.email}")
 
+    # Determinar escola de destino
+    target_school_id = school_id or current_user.school_id
+    if not target_school_id:
+        # Fallback para admins: busca a primeira escola cadastrada
+        from app.models.school import School
+        first_school = db.scalar(select(School))
+        if first_school:
+            target_school_id = first_school.id
+
+    if not target_school_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nenhuma escola cadastrada ou vinculada encontrada para associar o livro."
+        )
+
     # 1. Consulta à API externa do Google Books
+    resolved_data = None
     try:
         url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{normalized_isbn}"
         req = urllib.request.Request(
@@ -74,46 +96,78 @@ def lookup_isbn(isbn: str, current_user: Annotated[User, Depends(get_current_use
                 description = volume_info.get("description", "")
                 objectives = description[:300] + "..." if len(description) > 300 else description
                 
-                return {
-                    "resolved": True,
-                    "isbn": normalized_isbn,
-                    "data": {
-                        "title": title,
-                        "author": author,
-                        "subject": subject,
-                        "pedagogical_line": "A definir pela escola",
-                        "objectives": objectives or "Objetivos pedagógicos a serem definidos.",
-                        "family_orientation": "Acompanhar leitura conjunta e revisar atividades escolares.",
-                    }
+                resolved_data = {
+                    "title": title,
+                    "author": author,
+                    "subject": subject,
+                    "pedagogical_line": "A definir pela escola",
+                    "objectives": objectives or "Objetivos pedagógicos a serem definidos.",
+                    "family_orientation": "Acompanhar leitura conjunta e revisar atividades escolares.",
                 }
     except Exception as e:
         logger.error(f"Erro ao buscar ISBN no Google Books: {e}")
 
     # 2. Fallback para banco mockado de teste
-    mock_db = {
-        "9788532283215": {
-            "title": "Português Compartilhado",
-            "author": "Ana Silva",
-            "subject": "Português",
-            "pedagogical_line": "Socioconstrutivista",
-            "objectives": "Desenvolver a leitura e interpretação de textos literários nacionais.",
-            "family_orientation": "Acompanhar a leitura conjunta de 15 minutos à noite com o filho.",
-        },
-        "9788500000000": {
-            "title": "Matemática Criativa v1",
-            "author": "Carlos Souza",
-            "subject": "Matemática",
-            "pedagogical_line": "Tradicional/Cognitivista",
-            "objectives": "Fixar conceitos de multiplicação e divisão através de jogos práticos.",
-            "family_orientation": "Estimular a criança a contar objetos e fazer divisões na hora de lanchar.",
+    if not resolved_data:
+        mock_db = {
+            "9788532283215": {
+                "title": "Português Compartilhado",
+                "author": "Ana Silva",
+                "subject": "Português",
+                "pedagogical_line": "Socioconstrutivista",
+                "objectives": "Desenvolver a leitura e interpretação de textos literários nacionais.",
+                "family_orientation": "Acompanhar a leitura conjunta de 15 minutos à noite com o filho.",
+            },
+            "9788500000000": {
+                "title": "Matemática Criativa v1",
+                "author": "Carlos Souza",
+                "subject": "Matemática",
+                "pedagogical_line": "Tradicional/Cognitivista",
+                "objectives": "Fixar conceitos de multiplicação e divisão através de jogos práticos.",
+                "family_orientation": "Estimular a criança a conta objetos e fazer divisões na hora de lanchar.",
+            }
         }
-    }
+        if normalized_isbn in mock_db:
+            resolved_data = mock_db[normalized_isbn]
 
-    if normalized_isbn in mock_db:
+    # Se localizou de alguma forma, persiste no banco e retorna
+    if resolved_data:
+        # Verifica se já existe esse material cadastrado para a escola
+        existing = db.scalar(
+            select(PedagogicalMaterial).where(
+                PedagogicalMaterial.isbn == normalized_isbn,
+                PedagogicalMaterial.school_id == target_school_id
+            )
+        )
+        if not existing:
+            new_material = PedagogicalMaterial(
+                school_id=target_school_id,
+                isbn=normalized_isbn,
+                title=resolved_data["title"],
+                author=resolved_data["author"],
+                subject=resolved_data["subject"],
+                pedagogical_line=resolved_data["pedagogical_line"],
+                objectives=resolved_data["objectives"],
+                family_orientation=resolved_data["family_orientation"]
+            )
+            db.add(new_material)
+            db.commit()
+            db.refresh(new_material)
+            logger.info(f"Livro ISBN {normalized_isbn} inserido automaticamente no banco para escola {target_school_id}")
+            existing = new_material
+
         return {
             "resolved": True,
             "isbn": normalized_isbn,
-            "data": mock_db[normalized_isbn]
+            "data": {
+                "id": str(existing.id),
+                "title": existing.title,
+                "author": existing.author,
+                "subject": existing.subject,
+                "pedagogical_line": existing.pedagogical_line,
+                "objectives": existing.objectives,
+                "family_orientation": existing.family_orientation,
+            }
         }
 
     raise HTTPException(
