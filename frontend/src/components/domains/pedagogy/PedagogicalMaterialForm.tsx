@@ -140,25 +140,24 @@ export function PedagogicalMaterialForm({ schoolId: propSchoolId, schools = [], 
         </div>
       )}
 
-      <div className="flex gap-2 mb-4 items-end">
-        <div className="flex-1">
-          <Input
-            label="Buscar por ISBN (Opcional)"
-            placeholder="Ex: 9788532283215"
-            helperText="Insira um código ISBN válido de 10 ou 13 dígitos (somente números). O sistema buscará no acervo global e salvará as informações encontradas."
-            value={isbn}
-            onChange={(e) => setIsbn(e.target.value)}
-            disabled={isLoadingISBN || isLoadingSubmit || !activeSchoolId}
-          />
-        </div>
+      <div className="flex flex-col gap-2.5 mb-5">
+        <Input
+          label="Buscar por ISBN (Opcional)"
+          placeholder="Ex: 9788532283215"
+          helperText="Insira um código ISBN válido de 10 ou 13 dígitos (somente números). O sistema buscará no acervo global e salvará as informações encontradas."
+          value={isbn}
+          onChange={(e) => setIsbn(e.target.value)}
+          disabled={isLoadingISBN || isLoadingSubmit || !activeSchoolId}
+        />
         <Button
+          type="button"
           onClick={handleLookupISBN}
           disabled={isLoadingISBN || !isbn.trim() || !activeSchoolId}
-          className="h-10 px-3 flex items-center gap-1.5"
+          className="w-full h-10 flex items-center justify-center gap-1.5"
           variant="outline"
         >
           <Search className="w-4 h-4" />
-          {isLoadingISBN ? "Buscando..." : "Buscar"}
+          {isLoadingISBN ? "Buscando..." : "Buscar ISBN na Base Global"}
         </Button>
       </div>
 
@@ -171,7 +170,7 @@ export function PedagogicalMaterialForm({ schoolId: propSchoolId, schools = [], 
           required
           disabled={isLoadingSubmit || !activeSchoolId}
         />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="Autor"
             placeholder="Ex: Ana Clara"
