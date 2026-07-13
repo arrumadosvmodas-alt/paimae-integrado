@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { Bell, BookOpen, ClipboardList, GraduationCap, Sparkles, UserPlus, School as SchoolIcon, LayoutDashboard, ChevronDown, ChevronUp } from "lucide-react";
+import { Bell, BookOpen, ClipboardList, GraduationCap, Sparkles, UserPlus, School as SchoolIcon, LayoutDashboard, ChevronDown, ChevronUp, Users } from "lucide-react";
 
 import { api, getToken, login, setToken } from "./lib/api";
-import type { Child, EvolutionEvent, Notification, Routine, School, Task, User, DailySchoolRecord, PedagogicalMaterial } from "./lib/types";
+import type { Child, EvolutionEvent, Notification, Routine, School, Task, User, DailySchoolRecord, PedagogicalMaterial, PedagogicalMethodology } from "./lib/types";
 
 // Componentes do Design System UI
 import { Button } from "./components/ui/Button";
@@ -21,6 +21,7 @@ import { AppShell } from "./components/layout/AppShell";
 import { SchoolCreateForm } from "./components/domains/school/SchoolCreateForm";
 import { ChildCreateForm } from "./components/domains/child/ChildCreateForm";
 import { ChildSelector } from "./components/domains/child/ChildSelector";
+import { UserCreateForm } from "./components/domains/user/UserCreateForm";
 import { RoutineCreateForm } from "./components/domains/routine/RoutineCreateForm";
 import { RoutineList } from "./components/domains/routine/RoutineList";
 import { TaskCreateForm } from "./components/domains/task/TaskCreateForm";
@@ -31,9 +32,11 @@ import { EvolutionSummary } from "./components/domains/evolution/EvolutionSummar
 
 // Módulo Pedagógico
 import { PedagogicalMaterialForm } from "./components/domains/pedagogy/PedagogicalMaterialForm";
+import { PedagogicalMaterialList } from "./components/domains/pedagogy/PedagogicalMaterialList";
 import { DailyRecordForm } from "./components/domains/pedagogy/DailyRecordForm";
 import { DailyRecordList } from "./components/domains/pedagogy/DailyRecordList";
 import { FamilyInteractions } from "./components/domains/pedagogy/FamilyInteractions";
+import { PedagogicalMethodologyForm } from "./components/domains/pedagogy/PedagogicalMethodologyForm";
 
 export function App() {
   return (
@@ -59,6 +62,8 @@ function AppRoutes() {
   const [events, setEvents] = useState<EvolutionEvent[]>([]);
   const [dailyRecords, setDailyRecords] = useState<DailySchoolRecord[]>([]);
   const [materials, setMaterials] = useState<PedagogicalMaterial[]>([]);
+  const [methodologies, setMethodologies] = useState<PedagogicalMethodology[]>([]);
+  const [usersList, setUsersList] = useState<User[]>([]);
   const [selectedChildId, setSelectedChildId] = useState("");
   const [summary, setSummary] = useState("");
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
@@ -84,6 +89,12 @@ function AppRoutes() {
       setUser(me);
       setSchools(schoolList);
       setChildren(childList);
+
+      if (me.role === "admin") {
+        const uList = await api<User[]>("/api/v1/auth/users").catch(() => []);
+        setUsersList(uList);
+      }
+
       const nextChildId = selectedChildId || childList[0]?.id || "";
       setSelectedChildId(nextChildId);
       await loadChildData(nextChildId);
@@ -102,6 +113,7 @@ function AppRoutes() {
       setEvents([]);
       setDailyRecords([]);
       setMaterials([]);
+      setMethodologies([]);
       setSummary("");
       return;
     }
@@ -121,10 +133,15 @@ function AppRoutes() {
 
       const activeChild = children.find(c => c.id === childId);
       if (activeChild) {
-        const materialList = await api<PedagogicalMaterial[]>(`/api/v1/pedagogy/materials?school_id=${activeChild.school_id}`).catch(() => []);
+        const [materialList, methodologyList] = await Promise.all([
+          api<PedagogicalMaterial[]>(`/api/v1/pedagogy/materials?school_id=${activeChild.school_id}`).catch(() => []),
+          api<PedagogicalMethodology[]>(`/api/v1/pedagogy/methodologies?school_id=${activeChild.school_id}`).catch(() => []),
+        ]);
         setMaterials(materialList);
+        setMethodologies(methodologyList);
       } else {
         setMaterials([]);
+        setMethodologies([]);
       }
 
       setSummary(""); // Limpa o resumo de IA da criança anterior
@@ -162,14 +179,41 @@ function AppRoutes() {
     navigate("/");
   };
 
-  async function submit(path: string, payload: unknown, successMessage: string) {
+  async function submit(path: string, payload: any, successMessage: string) {
     try {
-      await api(path, { method: "POST", body: JSON.stringify(payload) });
+      const isEdit = payload && typeof payload === "object" && "id" in payload && payload.id;
+      const method = isEdit ? "PUT" : "POST";
+      const url = isEdit ? `${path}/${payload.id}` : path;
+      await api(url, { method, body: JSON.stringify(payload) });
       notify(successMessage);
       await loadBase();
     } catch (error) {
       notify(error instanceof Error ? error.message : "Erro ao salvar registro.", "error");
       throw error;
+    }
+  }
+
+  async function handleToggleActive(path: string, id: string, currentIsActive = true) {
+    const nextIsActive = !currentIsActive;
+    const actionLabel = nextIsActive ? "reativar" : "inativar";
+    if (!window.confirm(`Deseja realmente ${actionLabel} este registro?`)) return;
+    try {
+      await api(`${path}/${id}/status`, { method: "PATCH", body: JSON.stringify({ is_active: nextIsActive }) });
+      notify(nextIsActive ? "Registro reativado." : "Registro inativado.");
+      await loadBase();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Erro ao atualizar status.", "error");
+    }
+  }
+
+  async function handleDeleteUser(id: string) {
+    if (!window.confirm("Deseja realmente excluir este usuário permanentemente?")) return;
+    try {
+      await api(`/api/v1/auth/users/${id}`, { method: "DELETE" });
+      notify("Usuário excluído com sucesso.");
+      await loadBase();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Erro ao excluir usuário.", "error");
     }
   }
 
@@ -228,10 +272,15 @@ function AppRoutes() {
                 notifications={notifications}
                 tasks={tasks}
                 dailyRecords={dailyRecords}
+                materials={materials}
+                methodologies={methodologies}
+                usersList={usersList}
                 summary={summary}
                 isLoadingData={isLoadingData}
                 onLogout={handleLogout}
                 onSubmit={submit}
+                onToggleActive={handleToggleActive}
+                onDeleteUser={handleDeleteUser}
                 onCompleteNotification={handleCompleteNotification}
                 onGenerateAISummary={handleGenerateAISummary}
                 notify={notify}
@@ -447,10 +496,15 @@ interface DashboardPageProps {
   notifications: Notification[];
   tasks: Task[];
   dailyRecords: DailySchoolRecord[];
+  materials: PedagogicalMaterial[];
+  methodologies: PedagogicalMethodology[];
+  usersList: User[];
   summary: string;
   isLoadingData: boolean;
   onLogout: () => void;
-  onSubmit: (path: string, payload: unknown, successMsg: string) => Promise<void>;
+  onSubmit: (path: string, payload: any, successMsg: string) => Promise<void>;
+  onToggleActive: (path: string, id: string, currentIsActive?: boolean) => Promise<void>;
+  onDeleteUser: (id: string) => Promise<void>;
   onCompleteNotification: (id: string) => Promise<void>;
   onGenerateAISummary: () => Promise<void>;
   notify: (msg: string, type?: ToastType) => void;
@@ -466,10 +520,15 @@ function DashboardPage({
   notifications,
   tasks,
   dailyRecords,
+  materials,
+  methodologies,
+  usersList,
   summary,
   isLoadingData,
   onLogout,
   onSubmit,
+  onToggleActive,
+  onDeleteUser,
   onCompleteNotification,
   onGenerateAISummary,
   notify,
@@ -477,10 +536,39 @@ function DashboardPage({
   const [isSchoolsExpanded, setIsSchoolsExpanded] = useState(false);
   const [isChildrenExpanded, setIsChildrenExpanded] = useState(false);
   const [isPedagogyExpanded, setIsPedagogyExpanded] = useState(false);
+  const [isMethodologyExpanded, setIsMethodologyExpanded] = useState(false);
+  const [isUsersExpanded, setIsUsersExpanded] = useState(false);
+
+  const [schoolToEdit, setSchoolToEdit] = useState<School | null>(null);
+  const [childToEdit, setChildToEdit] = useState<Child | null>(null);
+  const [materialToEdit, setMaterialToEdit] = useState<PedagogicalMaterial | null>(null);
+  const [dailyRecordToEdit, setDailyRecordToEdit] = useState<DailySchoolRecord | null>(null);
+  const [methodologyToEdit, setMethodologyToEdit] = useState<PedagogicalMethodology | null>(null);
+  const [userToEdit, setUserToEdit] = useState<User | null>(null);
+
+  useEffect(() => {
+    if (schoolToEdit) setIsSchoolsExpanded(true);
+  }, [schoolToEdit]);
+
+  useEffect(() => {
+    if (childToEdit) setIsChildrenExpanded(true);
+  }, [childToEdit]);
+
+  useEffect(() => {
+    if (materialToEdit) setIsPedagogyExpanded(true);
+  }, [materialToEdit]);
+
+  useEffect(() => {
+    if (methodologyToEdit) setIsMethodologyExpanded(true);
+  }, [methodologyToEdit]);
+
+  useEffect(() => {
+    if (userToEdit) setIsUsersExpanded(true);
+  }, [userToEdit]);
 
   const showSchoolCreate = user?.role === "admin";
-  const showChildCreate = user?.role === "admin" || user?.role === "school";
-  const showPedagogyCreate = user?.role === "admin" || user?.role === "school";
+  const showChildCreate = user?.role === "admin" || user?.role === "school_admin" || user?.role === "teacher";
+  const showPedagogyCreate = user?.role === "admin" || user?.role === "school_admin" || user?.role === "teacher";
   const selectedChild = childrenList.find((c) => c.id === selectedChildId);
 
   const sidebarContent = (
@@ -501,15 +589,35 @@ function DashboardPage({
           >
             <div className="flex items-center gap-2">
               <SchoolIcon className="w-4.5 h-4.5 text-primary" />
-              <span>Cadastros de Escolas</span>
+              <span>Gerenciar Escolas (Cadastrar / Consultar / Editar)</span>
             </div>
             {isSchoolsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
           {isSchoolsExpanded && (
             <div className="p-4 border-t border-border bg-background/20">
               <SchoolCreateForm
-                onSubmit={(payload) => onSubmit("/api/v1/schools", payload, "Escola cadastrada com sucesso.")}
+                schoolToEdit={schoolToEdit}
+                onCancelEdit={() => setSchoolToEdit(null)}
+                onSubmit={async (payload) => {
+                  await onSubmit("/api/v1/schools", payload, schoolToEdit ? "Escola atualizada." : "Escola cadastrada.");
+                  setSchoolToEdit(null);
+                }}
               />
+
+              <div className="mt-4 pt-4 border-t border-border/80 flex flex-col gap-2 max-h-40 overflow-y-auto">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Escolas Cadastradas ({schools.length})</span>
+                {schools.map(s => (
+                  <div key={s.id} className="flex justify-between items-center text-xs p-2 bg-background/45 rounded-lg border border-border/50">
+                    <span className={`${s.is_active ? "text-text-primary" : "text-text-muted line-through"}`}>{s.name}</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSchoolToEdit(s)} className="text-primary hover:underline font-semibold">Editar</button>
+                      <button onClick={() => onToggleActive("/api/v1/schools", s.id, s.is_active !== false)} className={`${s.is_active ? "text-error" : "text-ok"} hover:underline font-semibold`}>
+                        {s.is_active ? "Inativar" : "Ativar"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -524,7 +632,7 @@ function DashboardPage({
           >
             <div className="flex items-center gap-2">
               <UserPlus className="w-4.5 h-4.5 text-primary" />
-              <span>Cadastros de Crianças</span>
+              <span>Gerenciar Alunos (Cadastrar / Consultar / Editar)</span>
             </div>
             {isChildrenExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -532,8 +640,31 @@ function DashboardPage({
             <div className="p-4 border-t border-border bg-background/20">
               <ChildCreateForm
                 schools={schools}
-                onSubmit={(payload) => onSubmit("/api/v1/children", payload, "Criança cadastrada com sucesso.")}
+                childToEdit={childToEdit}
+                onCancelEdit={() => setChildToEdit(null)}
+                onSubmit={async (payload) => {
+                  await onSubmit("/api/v1/children", payload, childToEdit ? "Aluno atualizado." : "Aluno cadastrado.");
+                  setChildToEdit(null);
+                }}
               />
+
+              <div className="mt-4 pt-4 border-t border-border/80 flex flex-col gap-2 max-h-40 overflow-y-auto">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Alunos Cadastrados ({childrenList.length})</span>
+                {childrenList.map(c => (
+                  <div key={c.id} className="flex justify-between items-center text-xs p-2 bg-background/45 rounded-lg border border-border/50">
+                    <div>
+                      <span className={`${c.is_active ? "text-text-primary" : "text-text-muted line-through"}`}>{c.full_name}</span>
+                      {!c.is_active && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setChildToEdit(c)} className="text-primary hover:underline font-semibold">Editar</button>
+                      <button onClick={() => onToggleActive("/api/v1/children", c.id, c.is_active !== false)} className={`${c.is_active ? "text-error" : "text-ok"} hover:underline font-semibold`}>
+                        {c.is_active ? "Inativar" : "Ativar"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -548,7 +679,7 @@ function DashboardPage({
           >
             <div className="flex items-center gap-2">
               <BookOpen className="w-4.5 h-4.5 text-primary" />
-              <span>Materiais Pedagógicos</span>
+              <span>Cadastrar Livros & Materiais</span>
             </div>
             {isPedagogyExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -557,9 +688,110 @@ function DashboardPage({
               <PedagogicalMaterialForm
                 schoolId={selectedChild?.school_id}
                 schools={schools}
-                onSubmit={(payload) => onSubmit("/api/v1/pedagogy/materials", payload, "Material cadastrado com sucesso.")}
+                materialToEdit={materialToEdit}
+                onCancelEdit={() => setMaterialToEdit(null)}
+                onSubmit={async (payload) => {
+                  await onSubmit("/api/v1/pedagogy/materials", payload, materialToEdit ? "Material atualizado." : "Material cadastrado.");
+                  setMaterialToEdit(null);
+                }}
                 notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
               />
+            </div>
+          )}
+        </div>
+      )}
+      {/* Accordion para cadastrar Metodologia Pedagógica */}
+      {showPedagogyCreate && (
+        <div className="border border-border rounded-2xl overflow-hidden bg-surface mt-4">
+          <button
+            onClick={() => setIsMethodologyExpanded(!isMethodologyExpanded)}
+            className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <GraduationCap className="w-4.5 h-4.5 text-primary" />
+              <span>Gerenciar Metodologias (Cadastrar / Consultar / Editar)</span>
+            </div>
+            {isMethodologyExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {isMethodologyExpanded && (
+            <div className="p-4 border-t border-border bg-background/20">
+              <PedagogicalMethodologyForm
+                schoolId={selectedChild?.school_id}
+                schools={schools}
+                methodologyToEdit={methodologyToEdit}
+                onCancelEdit={() => setMethodologyToEdit(null)}
+                onSubmit={async (payload) => {
+                  await onSubmit("/api/v1/pedagogy/methodologies", payload, methodologyToEdit ? "Metodologia atualizada." : "Metodologia cadastrada.");
+                  setMethodologyToEdit(null);
+                }}
+                notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
+              />
+
+              <div className="mt-4 pt-4 border-t border-border/80 flex flex-col gap-2 max-h-40 overflow-y-auto">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Metodologias Cadastradas ({methodologies.length})</span>
+                {methodologies.map(m => (
+                  <div key={m.id} className="flex justify-between items-center text-xs p-2 bg-background/45 rounded-lg border border-border/50">
+                    <div>
+                      <span className={`${m.is_active !== false ? "text-text-primary" : "text-text-muted line-through"}`}>{m.name}</span>
+                      {m.is_active === false && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setMethodologyToEdit(m)} className="text-primary hover:underline font-semibold">Editar</button>
+                      <button onClick={() => onToggleActive("/api/v1/pedagogy/methodologies", m.id, m.is_active !== false)} className={`${m.is_active !== false ? "text-error" : "text-ok"} hover:underline font-semibold`}>
+                        {m.is_active !== false ? "Inativar" : "Ativar"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Accordion para cadastrar Usuários */}
+      {showSchoolCreate && (
+        <div className="border border-border rounded-2xl overflow-hidden bg-surface mt-4">
+          <button
+            onClick={() => setIsUsersExpanded(!isUsersExpanded)}
+            className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Users className="w-4.5 h-4.5 text-primary" />
+              <span>Gerenciar Usuários (Cadastrar / Consultar / Editar)</span>
+            </div>
+            {isUsersExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {isUsersExpanded && (
+            <div className="p-4 border-t border-border bg-background/20">
+              <UserCreateForm
+                schools={schools}
+                userToEdit={userToEdit}
+                onCancelEdit={() => setUserToEdit(null)}
+                onSubmit={async (payload) => {
+                  await onSubmit("/api/v1/auth/users", payload, userToEdit ? "Usuário atualizado." : "Usuário cadastrado.");
+                  setUserToEdit(null);
+                }}
+              />
+
+              <div className="mt-4 pt-4 border-t border-border/80 flex flex-col gap-2 max-h-40 overflow-y-auto">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Usuários Cadastrados ({usersList.length})</span>
+                {usersList.map(u => (
+                  <div key={u.id} className="flex justify-between items-center text-xs p-2 bg-background/45 rounded-lg border border-border/50">
+                    <div>
+                      <span className={`${u.is_active !== false ? "text-text-primary" : "text-text-muted line-through"}`}>{u.name} ({u.role === "guardian" ? "Responsável" : u.role})</span>
+                      {u.is_active === false && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setUserToEdit(u)} className="text-primary hover:underline font-semibold">Editar</button>
+                      <button onClick={() => onToggleActive("/api/v1/auth/users", u.id, u.is_active !== false)} className={`${u.is_active !== false ? "text-error" : "text-ok"} hover:underline font-semibold`}>
+                        {u.is_active !== false ? "Inativar" : "Ativar"}
+                      </button>
+                      <button onClick={() => onDeleteUser(u.id)} className="text-error hover:underline font-semibold">Excluir</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -653,17 +885,49 @@ function DashboardPage({
             </div>
           </section>
 
-          {/* Seção Pedagógica: Diário Escolar */}
-          <section className={`grid gap-6 ${showPedagogyCreate ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
-            {showPedagogyCreate && (
-              <DailyRecordForm
-                childId={selectedChildId}
-                onSubmit={(payload) => onSubmit("/api/v1/pedagogy/daily-records", payload, "Relatório pedagógico diário criado com sucesso.")}
-                notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
-              />
-            )}
-            <DailyRecordList records={dailyRecords} />
-          </section>
+          {/* Seção Pedagógica Integrada */}
+          <div className="border-t border-border/60 pt-6 mt-2">
+            <h3 className="text-sm font-black uppercase tracking-wider text-text-primary mb-4 flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-primary" /> Módulo Pedagógico Integrado
+            </h3>
+            
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              {showPedagogyCreate && (
+                <div className="xl:col-span-1">
+                  <DailyRecordForm
+                    childId={selectedChildId}
+                    recordToEdit={dailyRecordToEdit}
+                    onCancelEdit={() => setDailyRecordToEdit(null)}
+                    onSubmit={async (payload) => {
+                      await onSubmit("/api/v1/pedagogy/daily-records", payload, dailyRecordToEdit ? "Relatório diário atualizado." : "Relatório diário registrado.");
+                      setDailyRecordToEdit(null);
+                    }}
+                    notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
+                  />
+                </div>
+              )}
+              <div className={`${showPedagogyCreate ? "xl:col-span-2" : "xl:col-span-3"} grid grid-cols-1 md:grid-cols-2 gap-6`}>
+                <DailyRecordList
+                  records={dailyRecords}
+                  showActions={showPedagogyCreate}
+                  onEdit={(r) => setDailyRecordToEdit(r)}
+                  onToggleActive={async (id) => {
+                    const record = dailyRecords.find((item) => item.id === id);
+                    await onToggleActive("/api/v1/pedagogy/daily-records", id, record?.is_active !== false);
+                  }}
+                />
+                <PedagogicalMaterialList
+                  materials={materials}
+                  showActions={showPedagogyCreate}
+                  onEdit={(m) => setMaterialToEdit(m)}
+                  onToggleActive={async (id) => {
+                    const material = materials.find((item) => item.id === id);
+                    await onToggleActive("/api/v1/pedagogy/materials", id, material?.is_active !== false);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
 
           {/* Seção 3: Visualização em Listas / Tabelas */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">

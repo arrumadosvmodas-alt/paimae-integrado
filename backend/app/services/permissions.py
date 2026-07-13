@@ -68,7 +68,7 @@ def scoped_child_ids_query(user: User):
 
 
 def ensure_school_staff(user: User) -> None:
-    if user.role in ("admin", "school"):
+    if user.role in ("admin", "school_admin", "teacher"):
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,

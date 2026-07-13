@@ -13,3 +13,7 @@ class Timestamped(ORMModel):
     created_at: datetime
     updated_at: datetime
 
+
+
+class ActiveStatusUpdate(BaseModel):
+    is_active: bool

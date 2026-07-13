@@ -25,3 +25,11 @@ class UserRead(Timestamped):
     school_id: UUID | None
     is_active: bool
 
+
+
+class UserUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=180)
+    email: EmailStr
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    role: str = Field(pattern="^(admin|school_admin|teacher|guardian)$")
+    school_id: UUID | None = None

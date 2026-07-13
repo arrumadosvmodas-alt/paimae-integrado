@@ -9,11 +9,20 @@ import type { School } from "../../../lib/types";
 interface PedagogicalMaterialFormProps {
   schoolId?: string;
   schools?: School[];
+  materialToEdit?: any | null;
+  onCancelEdit?: () => void;
   onSubmit: (payload: any) => Promise<void>;
   notify: (msg: string, type?: "ok" | "error") => void;
 }
 
-export function PedagogicalMaterialForm({ schoolId: propSchoolId, schools = [], onSubmit, notify }: PedagogicalMaterialFormProps) {
+export function PedagogicalMaterialForm({ 
+  schoolId: propSchoolId, 
+  schools = [], 
+  materialToEdit,
+  onCancelEdit,
+  onSubmit, 
+  notify 
+}: PedagogicalMaterialFormProps) {
   const [selectedSchoolId, setSelectedSchoolId] = useState(propSchoolId || "");
   const [isbn, setIsbn] = useState("");
   const [title, setTitle] = useState("");
@@ -39,6 +48,30 @@ export function PedagogicalMaterialForm({ schoolId: propSchoolId, schools = [], 
       setSelectedSchoolId(schools[0].id);
     }
   }, [propSchoolId, schools]);
+
+  // Sincroniza dados quando em modo de edição
+  useEffect(() => {
+    if (materialToEdit) {
+      setSelectedSchoolId(materialToEdit.school_id || "");
+      setIsbn(materialToEdit.isbn || "");
+      setTitle(materialToEdit.title || "");
+      setAuthor(materialToEdit.author || "");
+      setSubject(materialToEdit.subject || "");
+      setPedagogicalLine(materialToEdit.pedagogical_line || "");
+      setObjectives(materialToEdit.objectives || "");
+      setFamilyOrientation(materialToEdit.family_orientation || "");
+      setItems(materialToEdit.items || []);
+    } else {
+      setIsbn("");
+      setTitle("");
+      setAuthor("");
+      setSubject("");
+      setPedagogicalLine("");
+      setObjectives("");
+      setFamilyOrientation("");
+      setItems([]);
+    }
+  }, [materialToEdit]);
 
   const activeSchoolId = selectedSchoolId || (schools.length > 0 ? schools[0].id : "");
 
@@ -93,32 +126,45 @@ export function PedagogicalMaterialForm({ schoolId: propSchoolId, schools = [], 
 
     setIsLoadingSubmit(true);
     try {
-      await onSubmit({
-        school_id: activeSchoolId,
-        title: title.trim(),
-        author: author.trim() || null,
-        isbn: isbn.trim() || null,
-        subject: subject.trim(),
-        pedagogical_line: pedagogicalLine.trim(),
-        objectives: objectives.trim() || null,
-        family_orientation: familyOrientation.trim() || null,
-        items: items
-      });
-      setTitle("");
-      setAuthor("");
-      setIsbn("");
-      setSubject("");
-      setPedagogicalLine("");
-      setObjectives("");
-      setFamilyOrientation("");
-      setItems([]);
+      if (materialToEdit) {
+        await onSubmit({
+          id: materialToEdit.id,
+          school_id: activeSchoolId,
+          title: title.trim(),
+          author: author.trim() || null,
+          isbn: isbn.trim() || null,
+          subject: subject.trim(),
+          pedagogical_line: pedagogicalLine.trim(),
+          objectives: objectives.trim() || null,
+          family_orientation: familyOrientation.trim() || null,
+          items: items.map(it => ({ chapter: it.chapter, page: it.page, theme: it.theme, description: it.description }))
+        });
+      } else {
+        await onSubmit({
+          school_id: activeSchoolId,
+          title: title.trim(),
+          author: author.trim() || null,
+          isbn: isbn.trim() || null,
+          subject: subject.trim(),
+          pedagogical_line: pedagogicalLine.trim(),
+          objectives: objectives.trim() || null,
+          family_orientation: familyOrientation.trim() || null,
+          items: items
+        });
+        setTitle("");
+        setAuthor("");
+        setIsbn("");
+        setSubject("");
+        setPedagogicalLine("");
+        setObjectives("");
+      }
     } finally {
       setIsLoadingSubmit(false);
     }
   };
 
   return (
-    <Card title="Adicionar Material Didático" icon={<BookOpen className="w-5 h-5 text-primary" />}>
+    <Card title={materialToEdit ? "Editar Material Didático" : "Adicionar Material Didático"} icon={<BookOpen className="w-5 h-5 text-primary" />}>
       {/* Seletor de Escola (Apenas se não herdado automaticamente de uma criança selecionada) */}
       {!propSchoolId && schools.length > 0 && (
         <div className="mb-4">
@@ -216,7 +262,7 @@ export function PedagogicalMaterialForm({ schoolId: propSchoolId, schools = [], 
             Capítulos e Páginas do Material (Itens Didáticos)
           </span>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+          <div className="flex flex-col gap-3">
             <Input
               label="Tema / Habilidade *"
               placeholder="Ex: Multiplicação Simples"
@@ -224,20 +270,22 @@ export function PedagogicalMaterialForm({ schoolId: propSchoolId, schools = [], 
               onChange={(e) => setNewItemTheme(e.target.value)}
               disabled={!activeSchoolId}
             />
-            <Input
-              label="Capítulo"
-              placeholder="Ex: Cap. 2"
-              value={newItemChapter}
-              onChange={(e) => setNewItemChapter(e.target.value)}
-              disabled={!activeSchoolId}
-            />
-            <Input
-              label="Página"
-              placeholder="Ex: p. 45-50"
-              value={newItemPage}
-              onChange={(e) => setNewItemPage(e.target.value)}
-              disabled={!activeSchoolId}
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                label="Capítulo"
+                placeholder="Ex: Cap. 2"
+                value={newItemChapter}
+                onChange={(e) => setNewItemChapter(e.target.value)}
+                disabled={!activeSchoolId}
+              />
+              <Input
+                label="Página"
+                placeholder="Ex: p. 45-50"
+                value={newItemPage}
+                onChange={(e) => setNewItemPage(e.target.value)}
+                disabled={!activeSchoolId}
+              />
+            </div>
           </div>
           <Button
             type="button"
@@ -267,14 +315,27 @@ export function PedagogicalMaterialForm({ schoolId: propSchoolId, schools = [], 
           )}
         </div>
 
-        <Button
-          type="submit"
-          isLoading={isLoadingSubmit}
-          disabled={!activeSchoolId}
-          className="w-full mt-2"
-        >
-          {activeSchoolId ? "Cadastrar Material Didático" : "Cadastre uma escola primeiro"}
-        </Button>
+        <div className="flex gap-2 mt-2">
+          {materialToEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancelEdit}
+              disabled={isLoadingSubmit}
+              className="w-1/3 flex items-center justify-center gap-1"
+            >
+              Cancelar
+            </Button>
+          )}
+          <Button
+            type="submit"
+            isLoading={isLoadingSubmit}
+            disabled={!activeSchoolId}
+            className="flex-1"
+          >
+            {materialToEdit ? "Salvar Alterações" : activeSchoolId ? "Cadastrar Material Didático" : "Cadastre uma escola primeiro"}
+          </Button>
+        </div>
       </form>
     </Card>
   );
