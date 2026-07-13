@@ -33,6 +33,7 @@ import { EvolutionSummary } from "./components/domains/evolution/EvolutionSummar
 import { PedagogicalMaterialForm } from "./components/domains/pedagogy/PedagogicalMaterialForm";
 import { DailyRecordForm } from "./components/domains/pedagogy/DailyRecordForm";
 import { DailyRecordList } from "./components/domains/pedagogy/DailyRecordList";
+import { FamilyInteractions } from "./components/domains/pedagogy/FamilyInteractions";
 
 export function App() {
   return (
@@ -630,6 +631,10 @@ function DashboardPage({
                 childId={selectedChildId}
                 summaryText={summary}
                 onGenerateSummary={onGenerateAISummary}
+              />
+              <FamilyInteractions
+                childId={selectedChildId}
+                notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
               />
             </div>
           </section>

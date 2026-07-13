@@ -120,3 +120,99 @@ def build_child_summary(db: Session, child_id) -> dict:
         "summary": summary_text.strip(),
         "data_points": total_data_points,
     }
+
+
+def build_child_interaction(db: Session, child_id, interaction_type: str) -> dict:
+    """
+    Gera uma sugestão de interação explícita (conversa, pergunta ou orientação)
+    baseada nos dados pedagógicos e comportamentais da criança.
+    """
+    child = db.get(Child, child_id)
+    if not child:
+        return {"status": "error", "content": "Criança não encontrada."}
+
+    # Busca eventos de evolução
+    events = list(
+        db.scalars(
+            select(EvolutionEvent)
+            .where(EvolutionEvent.child_id == child_id)
+            .order_by(EvolutionEvent.occurred_at.desc())
+            .limit(10)
+        )
+    )
+
+    # Busca diários
+    daily_records = list(
+        db.scalars(
+            select(DailySchoolRecord)
+            .where(DailySchoolRecord.child_id == child_id)
+            .order_by(DailySchoolRecord.date.desc())
+            .limit(10)
+        )
+    )
+
+    total_data_points = len(events) + len(daily_records)
+    if total_data_points < MIN_DATA_POINTS_FOR_SUMMARY:
+        return {
+            "status": "insufficient_data",
+            "content": "Insira mais registros diários ou eventos de evolução (mínimo de 3 registros ao todo) para liberar essa sugestão pedagógica.",
+        }
+
+    # Busca materiais didáticos
+    materials = list(
+        db.scalars(
+            select(PedagogicalMaterial)
+            .where(PedagogicalMaterial.school_id == child.school_id)
+            .limit(5)
+        )
+    )
+
+    last_record = daily_records[0] if daily_records else None
+    last_event = events[0] if events else None
+
+    if interaction_type == "conversation":
+        if last_record:
+            subject_info = f" na aula de {materials[0].subject}" if materials else ""
+            content = (
+                f"💬 **Roteiro de Conversa para hoje com {child.full_name}:**\n\n"
+                f"1. Comece de forma calorosa: *'Oi, filho(a)! Como foi o seu dia hoje na escola?'*\n"
+                f"2. Faça a ponte com a atividade realizada: *'Fiquei sabendo que hoje vocês trabalharam em: \"{last_record.summary}\"{subject_info}. O que você achou mais divertido?'*\n"
+                f"3. Incentive a reflexão: *'Você conseguiu mostrar para o professor o que aprendeu?'*"
+            )
+        else:
+            content = (
+                f"💬 **Roteiro de Conversa para hoje com {child.full_name}:**\n\n"
+                f"Pergunte sobre as conquistas do dia: *'Como foi seu dia hoje? Soube que você teve um evento de {last_event.event_type if last_event else 'evolução'} na escola. Me conta como foi!'*"
+            )
+
+    elif interaction_type == "question":
+        if last_record and last_record.observed_skills:
+            first_skill = last_record.observed_skills.split(",")[0].strip()
+            content = (
+                f"❓ **Pergunta reflexiva para fazer a {child.full_name}:**\n\n"
+                f"*'Hoje na escola você praticou a habilidade de **{first_skill}**. Você sentiu algum desafio ou achou fácil fazer essa atividade?'*"
+            )
+        elif last_event:
+            content = (
+                f"❓ **Pergunta reflexiva para fazer a {child.full_name}:**\n\n"
+                f"*'Hoje foi um dia voltado para {last_event.event_type}. O que você aprendeu de novo que gostaria de me ensinar?'*"
+            )
+        else:
+            content = (
+                f"❓ **Pergunta reflexiva para fazer a {child.full_name}:**\n\n"
+                f"*'Qual foi a melhor coisa que aconteceu na sua aula hoje?'*"
+            )
+
+    elif interaction_type == "guidance":
+        skills_text = f" habilidades como '{last_record.observed_skills}'" if last_record and last_record.observed_skills else "as tarefas de aula"
+        content = (
+            f"🌟 **Orientação Pedagógica / Reforço Positivo:**\n\n"
+            f"Elogie {child.full_name} hoje focando no esforço, não apenas no resultado! Diga algo como:\n"
+            f"*'Estou muito orgulhoso(a) de ver como você está se dedicando a desenvolver {skills_text}. Continue assim!'*\n\n"
+            f"**Dica de apoio:** Mantenha um ambiente calmo para as tarefas escolares e revise os cadernos juntos por 5 minutos."
+        )
+    else:
+        return {"status": "error", "content": "Tipo de interação inválido."}
+
+    return {"status": "ok", "content": content}
+
