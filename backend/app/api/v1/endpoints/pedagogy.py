@@ -74,12 +74,14 @@ def lookup_isbn(
     # 1. Consulta à API externa do Google Books
     resolved_data = None
     try:
+        import ssl
+        ssl_context = ssl._create_unverified_context()
         url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{normalized_isbn}"
         req = urllib.request.Request(
             url, 
             headers={"User-Agent": "PaiMaeIntegrado-PedagogyApp/1.0"}
         )
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with urllib.request.urlopen(req, timeout=5, context=ssl_context) as response:
             res_data = json.loads(response.read().decode())
             if res_data.get("totalItems", 0) > 0:
                 volume_info = res_data["items"][0]["volumeInfo"]

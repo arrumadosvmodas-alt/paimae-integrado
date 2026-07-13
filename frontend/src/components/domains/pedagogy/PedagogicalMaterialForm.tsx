@@ -145,6 +145,7 @@ export function PedagogicalMaterialForm({ schoolId: propSchoolId, schools = [], 
           <Input
             label="Buscar por ISBN (Opcional)"
             placeholder="Ex: 9788532283215"
+            helperText="Insira um código ISBN válido de 10 ou 13 dígitos (somente números). O sistema buscará no acervo global e salvará as informações encontradas."
             value={isbn}
             onChange={(e) => setIsbn(e.target.value)}
             disabled={isLoadingISBN || isLoadingSubmit || !activeSchoolId}
