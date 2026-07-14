@@ -6,11 +6,13 @@ from app.models.notification import Notification
 from app.models.routine import RoutineItem
 from app.models.school import School
 from app.models.task import Task
-from app.models.user import User
+from app.models.user import GuardianProfile, User
 from app.models.pedagogy import (
     PedagogicalMethodology,
     PedagogicalMaterial,
     MaterialItem,
+    MaterialIndexEntry,
+    SchoolSchedule,
     DailySchoolRecord,
     FamilyInteractionSuggestion,
     StudyPlan,
@@ -54,9 +56,12 @@ __all__ = [
     "School",
     "Task",
     "User",
+    "GuardianProfile",
     "PedagogicalMethodology",
     "PedagogicalMaterial",
     "MaterialItem",
+    "MaterialIndexEntry",
+    "SchoolSchedule",
     "DailySchoolRecord",
     "FamilyInteractionSuggestion",
     "StudyPlan",

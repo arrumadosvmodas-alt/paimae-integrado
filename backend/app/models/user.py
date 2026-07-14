@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, String, Boolean, DateTime
+from sqlalchemy import ForeignKey, String, Boolean, DateTime, JSON
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,4 +25,19 @@ class User(IdMixin, TimestampMixin, Base):
 
     school = relationship("School", back_populates="users")
     guardian_links = relationship("ChildGuardian", back_populates="guardian")
+    guardian_profile = relationship("GuardianProfile", back_populates="guardian", uselist=False, cascade="all, delete-orphan")
+
+
+class GuardianProfile(IdMixin, TimestampMixin, Base):
+    __tablename__ = "guardian_profiles"
+
+    guardian_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    phone: Mapped[str | None] = mapped_column(String(20))
+    preferred_channel: Mapped[str] = mapped_column(String(20), default="app")
+    daily_summary_time: Mapped[str | None] = mapped_column(String(5))
+    evening_activity_time: Mapped[str | None] = mapped_column(String(5))
+    notification_preferences: Mapped[dict | None] = mapped_column(JSON)
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    guardian = relationship("User", back_populates="guardian_profile")
 

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
@@ -70,6 +71,7 @@ class PedagogicalMaterialRead(Timestamped):
     processing_status: str
     processing_error: str | None
     items: list[MaterialItemRead]
+    index_entries: list[MaterialIndexEntryRead]
     is_active: bool
 
 
@@ -84,6 +86,72 @@ class PedagogicalMaterialUpdate(BaseModel):
     file_url: str | None = Field(default=None, max_length=500)
     items: list[MaterialItemCreate] | None = None
 
+
+
+# --- INDICE DO MATERIAL ---
+class MaterialIndexEntryCreate(BaseModel):
+    source_type: str = Field(default="book", pattern="^(book|pdf|image|ocr|manual)$")
+    chapter: str | None = Field(default=None, max_length=80)
+    page_start: int | None = Field(default=None, ge=1)
+    page_end: int | None = Field(default=None, ge=1)
+    theme: str = Field(min_length=2, max_length=180)
+    skills: dict | None = None
+    extracted_text: str | None = None
+    ai_summary: str | None = None
+    review_status: str = Field(default="pending", pattern="^(pending|reviewed|rejected)$")
+
+
+class MaterialIndexEntryRead(Timestamped):
+    material_id: UUID
+    source_type: str
+    chapter: str | None
+    page_start: int | None
+    page_end: int | None
+    theme: str
+    skills: dict | None
+    extracted_text: str | None
+    ai_summary: str | None
+    review_status: str
+    is_active: bool
+
+
+# --- CRONOGRAMA ESCOLAR ---
+class SchoolScheduleCreate(BaseModel):
+    child_id: UUID
+    school_id: UUID
+    date: date
+    subject: str = Field(min_length=2, max_length=80)
+    topic: str | None = Field(default=None, max_length=180)
+    source: str = Field(default="manual", pattern="^(manual|pdf|image|ocr|fallback)$")
+    source_file_url: str | None = Field(default=None, max_length=500)
+    confidence_score: int | None = Field(default=None, ge=0, le=100)
+    fallback_used: bool = False
+    status: str = Field(default="planned", pattern="^(planned|confirmed|completed|skipped)$")
+
+
+class SchoolScheduleRead(Timestamped):
+    child_id: UUID
+    school_id: UUID
+    date: date
+    subject: str
+    topic: str | None
+    source: str
+    source_file_url: str | None
+    confidence_score: int | None
+    fallback_used: bool
+    status: str
+    is_active: bool
+
+
+class SchoolScheduleUpdate(BaseModel):
+    date: date
+    subject: str = Field(min_length=2, max_length=80)
+    topic: str | None = Field(default=None, max_length=180)
+    source: str = Field(default="manual", pattern="^(manual|pdf|image|ocr|fallback)$")
+    source_file_url: str | None = Field(default=None, max_length=500)
+    confidence_score: int | None = Field(default=None, ge=0, le=100)
+    fallback_used: bool = False
+    status: str = Field(default="planned", pattern="^(planned|confirmed|completed|skipped)$")
 
 # --- INTERAÇÃO FAMILIAR ---
 class FamilyInteractionSuggestionCreate(BaseModel):

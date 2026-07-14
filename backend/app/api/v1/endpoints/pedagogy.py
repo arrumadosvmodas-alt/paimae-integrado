@@ -15,6 +15,8 @@ from app.models.pedagogy import (
     MaterialItem,
     DailySchoolRecord,
     FamilyInteractionSuggestion,
+    MaterialIndexEntry,
+    SchoolSchedule,
 )
 from app.models.user import User
 from app.schemas.common import ActiveStatusUpdate
@@ -31,6 +33,11 @@ from app.schemas.pedagogy import (
     MaterialItemRead,
     MaterialItemCreate,
     FamilyInteractionSuggestionRead,
+    MaterialIndexEntryCreate,
+    MaterialIndexEntryRead,
+    SchoolScheduleCreate,
+    SchoolScheduleRead,
+    SchoolScheduleUpdate,
 )
 from app.services.audit import record_audit
 from app.services.permissions import ensure_child_access, ensure_admin, ensure_school_staff
@@ -522,6 +529,103 @@ def update_material_item(
     db.refresh(item)
     return item
 
+
+
+
+@router.post("/materials/{material_id}/index", response_model=MaterialIndexEntryRead, status_code=status.HTTP_201_CREATED)
+def create_material_index_entry(
+    material_id: UUID,
+    payload: MaterialIndexEntryCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    ensure_school_staff(current_user)
+    material = db.get(PedagogicalMaterial, material_id)
+    if not material:
+        raise HTTPException(status_code=404, detail="Material didatico nao encontrado.")
+    if current_user.role != "admin" and str(current_user.school_id) != str(material.school_id):
+        raise HTTPException(status_code=403, detail="Sem permissao para esta escola.")
+
+    entry = MaterialIndexEntry(material_id=material.id, **payload.model_dump())
+    db.add(entry)
+    db.flush()
+    record_audit(db, actor=current_user, action="pedagogy.material_index_create", entity_type="material_index_entry", entity_id=entry.id, school_id=material.school_id)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+@router.get("/materials/{material_id}/index", response_model=list[MaterialIndexEntryRead])
+def list_material_index_entries(
+    material_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    material = db.get(PedagogicalMaterial, material_id)
+    if not material:
+        raise HTTPException(status_code=404, detail="Material didatico nao encontrado.")
+    if current_user.role != "admin" and str(current_user.school_id) != str(material.school_id):
+        raise HTTPException(status_code=403, detail="Sem permissao para esta escola.")
+
+    query = select(MaterialIndexEntry).where(MaterialIndexEntry.material_id == material_id).order_by(MaterialIndexEntry.page_start.asc())
+    if current_user.role == "guardian":
+        query = query.where(MaterialIndexEntry.is_active.is_(True), MaterialIndexEntry.review_status == "reviewed")
+    return list(db.scalars(query))
+
+
+@router.post("/school-schedules", response_model=SchoolScheduleRead, status_code=status.HTTP_201_CREATED)
+def create_school_schedule(
+    payload: SchoolScheduleCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    ensure_school_staff(current_user)
+    child = ensure_child_access(db, current_user, payload.child_id)
+    if str(child.school_id) != str(payload.school_id):
+        raise HTTPException(status_code=400, detail="Crianca nao pertence a escola informada.")
+
+    schedule = SchoolSchedule(**payload.model_dump())
+    db.add(schedule)
+    db.flush()
+    record_audit(db, actor=current_user, action="pedagogy.school_schedule_create", entity_type="school_schedule", entity_id=schedule.id, school_id=payload.school_id)
+    db.commit()
+    db.refresh(schedule)
+    return schedule
+
+
+@router.get("/school-schedules", response_model=list[SchoolScheduleRead])
+def list_school_schedules(
+    child_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    ensure_child_access(db, current_user, child_id)
+    query = select(SchoolSchedule).where(SchoolSchedule.child_id == child_id).order_by(SchoolSchedule.date.asc())
+    if current_user.role == "guardian":
+        query = query.where(SchoolSchedule.is_active.is_(True))
+    return list(db.scalars(query))
+
+
+@router.put("/school-schedules/{schedule_id}", response_model=SchoolScheduleRead)
+def update_school_schedule(
+    schedule_id: UUID,
+    payload: SchoolScheduleUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    ensure_school_staff(current_user)
+    schedule = db.get(SchoolSchedule, schedule_id)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Cronograma escolar nao encontrado.")
+    child = ensure_child_access(db, current_user, schedule.child_id)
+
+    for key, value in payload.model_dump().items():
+        setattr(schedule, key, value)
+
+    record_audit(db, actor=current_user, action="pedagogy.school_schedule_update", entity_type="school_schedule", entity_id=schedule.id, school_id=child.school_id)
+    db.commit()
+    db.refresh(schedule)
+    return schedule
 
 # --- DAILY RECORDS ---
 @router.post("/daily-records", response_model=DailySchoolRecordRead, status_code=status.HTTP_201_CREATED)

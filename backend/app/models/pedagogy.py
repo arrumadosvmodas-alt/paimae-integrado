@@ -42,6 +42,44 @@ class PedagogicalMaterial(IdMixin, TimestampMixin, Base):
     items = relationship("MaterialItem", back_populates="material", cascade="all, delete-orphan")
     study_plans = relationship("StudyPlan", back_populates="material", cascade="all, delete-orphan")
     interactions = relationship("Interaction", back_populates="material", cascade="all, delete-orphan")
+    index_entries = relationship("MaterialIndexEntry", back_populates="material", cascade="all, delete-orphan")
+
+
+class MaterialIndexEntry(IdMixin, TimestampMixin, Base):
+    __tablename__ = "material_index_entries"
+
+    material_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("pedagogical_materials.id"), nullable=False, index=True)
+    source_type: Mapped[str] = mapped_column(String(20), default="book")
+    chapter: Mapped[str | None] = mapped_column(String(80))
+    page_start: Mapped[int | None] = mapped_column(Integer)
+    page_end: Mapped[int | None] = mapped_column(Integer)
+    theme: Mapped[str] = mapped_column(String(180), nullable=False)
+    skills: Mapped[dict | None] = mapped_column(JSON)
+    extracted_text: Mapped[str | None] = mapped_column(Text)
+    ai_summary: Mapped[str | None] = mapped_column(Text)
+    review_status: Mapped[str] = mapped_column(String(20), default="pending")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    material = relationship("PedagogicalMaterial", back_populates="index_entries")
+
+
+class SchoolSchedule(IdMixin, TimestampMixin, Base):
+    __tablename__ = "school_schedules"
+
+    child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, index=True)
+    school_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("schools.id"), nullable=False, index=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    subject: Mapped[str] = mapped_column(String(80), nullable=False)
+    topic: Mapped[str | None] = mapped_column(String(180))
+    source: Mapped[str] = mapped_column(String(20), default="manual")
+    source_file_url: Mapped[str | None] = mapped_column(String(500))
+    confidence_score: Mapped[int | None] = mapped_column(Integer)
+    fallback_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(20), default="planned")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    child = relationship("Child")
+    school = relationship("School")
 
 
 class MaterialItem(IdMixin, TimestampMixin, Base):

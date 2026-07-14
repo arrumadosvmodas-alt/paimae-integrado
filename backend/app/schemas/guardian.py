@@ -22,3 +22,22 @@ class ChildGuardianRead(Timestamped):
     can_manage_routine: bool
     can_mark_notifications: bool
 
+
+
+class GuardianProfileUpsert(BaseModel):
+    phone: str | None = Field(default=None, max_length=20)
+    preferred_channel: str = Field(default="app", pattern="^(app|email|whatsapp)$")
+    daily_summary_time: str | None = Field(default=None, pattern="^([01][0-9]|2[0-3]):[0-5][0-9]$")
+    evening_activity_time: str | None = Field(default=None, pattern="^([01][0-9]|2[0-3]):[0-5][0-9]$")
+    notification_preferences: dict | None = None
+    onboarding_completed: bool = False
+
+
+class GuardianProfileRead(Timestamped):
+    guardian_id: UUID
+    phone: str | None
+    preferred_channel: str
+    daily_summary_time: str | None
+    evening_activity_time: str | None
+    notification_preferences: dict | None
+    onboarding_completed: bool

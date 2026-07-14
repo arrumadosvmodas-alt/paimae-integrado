@@ -9,6 +9,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
 
 revision: str = "202607140002"
@@ -17,75 +18,103 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _has_table(table_name: str) -> bool:
+    return inspect(op.get_bind()).has_table(table_name)
+
+
+def _has_column(table_name: str, column_name: str) -> bool:
+    if not _has_table(table_name):
+        return False
+    return any(column["name"] == column_name for column in inspect(op.get_bind()).get_columns(table_name))
+
+
+def _has_index(table_name: str, index_name: str) -> bool:
+    if not _has_table(table_name):
+        return False
+    return any(index["name"] == index_name for index in inspect(op.get_bind()).get_indexes(table_name))
+
+
+def _add_column_if_missing(table_name: str, column: sa.Column) -> None:
+    if not _has_column(table_name, column.name):
+        op.add_column(table_name, column)
+
+
+def _create_index_if_missing(index_name: str, table_name: str, columns: list[str], *, unique: bool = False) -> None:
+    if not _has_index(table_name, index_name):
+        op.create_index(index_name, table_name, columns, unique=unique)
+
+
 def upgrade() -> None:
-    # --- Campos adicionais de intake da criança ---
-    op.add_column("children", sa.Column("grade", sa.String(length=20), nullable=True))
-    op.add_column("children", sa.Column("shift", sa.String(length=20), nullable=True))
-    op.add_column("children", sa.Column("preferences", sa.JSON(), nullable=True))
-    op.add_column("children", sa.Column("difficulties", sa.JSON(), nullable=True))
-    op.add_column("children", sa.Column("observations", sa.Text(), nullable=True))
+    # --- Campos adicionais de intake da crianca ---
+    _add_column_if_missing("children", sa.Column("grade", sa.String(length=20), nullable=True))
+    _add_column_if_missing("children", sa.Column("shift", sa.String(length=20), nullable=True))
+    _add_column_if_missing("children", sa.Column("preferences", sa.JSON(), nullable=True))
+    _add_column_if_missing("children", sa.Column("difficulties", sa.JSON(), nullable=True))
+    _add_column_if_missing("children", sa.Column("observations", sa.Text(), nullable=True))
 
     # --- Processamento de materiais (OCR/IA) ---
-    op.add_column("pedagogical_materials", sa.Column("file_url", sa.String(length=500), nullable=True))
-    op.add_column("pedagogical_materials", sa.Column("extracted_text", sa.Text(), nullable=True))
-    op.add_column("pedagogical_materials", sa.Column("ai_analysis", sa.JSON(), nullable=True))
-    op.add_column(
+    _add_column_if_missing("pedagogical_materials", sa.Column("file_url", sa.String(length=500), nullable=True))
+    _add_column_if_missing("pedagogical_materials", sa.Column("extracted_text", sa.Text(), nullable=True))
+    _add_column_if_missing("pedagogical_materials", sa.Column("ai_analysis", sa.JSON(), nullable=True))
+    _add_column_if_missing(
         "pedagogical_materials",
         sa.Column("processing_status", sa.String(length=20), server_default="pending", nullable=False),
     )
-    op.add_column("pedagogical_materials", sa.Column("processing_error", sa.Text(), nullable=True))
+    _add_column_if_missing("pedagogical_materials", sa.Column("processing_error", sa.Text(), nullable=True))
 
-    # --- Planos de estudo e interações ---
-    op.create_table(
-        "study_plans",
-        sa.Column("child_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("material_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("start_date", sa.Date(), nullable=False),
-        sa.Column("end_date", sa.Date(), nullable=True),
-        sa.Column("ai_generated_plan", sa.Text(), nullable=True),
-        sa.Column("status", sa.String(length=20), nullable=False),
-        sa.Column("is_active", sa.Boolean(), nullable=False),
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["child_id"], ["children.id"]),
-        sa.ForeignKeyConstraint(["material_id"], ["pedagogical_materials.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_study_plans_child_id"), "study_plans", ["child_id"], unique=False)
-    op.create_index(op.f("ix_study_plans_material_id"), "study_plans", ["material_id"], unique=False)
+    # --- Planos de estudo e interacoes ---
+    if not _has_table("study_plans"):
+        op.create_table(
+            "study_plans",
+            sa.Column("child_id", postgresql.UUID(as_uuid=True), nullable=False),
+            sa.Column("material_id", postgresql.UUID(as_uuid=True), nullable=False),
+            sa.Column("start_date", sa.Date(), nullable=False),
+            sa.Column("end_date", sa.Date(), nullable=True),
+            sa.Column("ai_generated_plan", sa.Text(), nullable=True),
+            sa.Column("status", sa.String(length=20), nullable=False),
+            sa.Column("is_active", sa.Boolean(), nullable=False),
+            sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.ForeignKeyConstraint(["child_id"], ["children.id"]),
+            sa.ForeignKeyConstraint(["material_id"], ["pedagogical_materials.id"]),
+            sa.PrimaryKeyConstraint("id"),
+        )
+    _create_index_if_missing(op.f("ix_study_plans_child_id"), "study_plans", ["child_id"])
+    _create_index_if_missing(op.f("ix_study_plans_material_id"), "study_plans", ["material_id"])
 
-    op.create_table(
-        "daily_study_plan_items",
-        sa.Column("study_plan_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("date", sa.Date(), nullable=False),
-        sa.Column("chapter_or_theme", sa.String(length=180), nullable=False),
-        sa.Column("activity_description", sa.Text(), nullable=True),
-        sa.Column("difficulty_level", sa.String(length=20), nullable=False),
-        sa.Column("estimated_duration_minutes", sa.Integer(), nullable=True),
-        sa.Column("status", sa.String(length=20), nullable=False),
-        sa.Column("is_active", sa.Boolean(), nullable=False),
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["study_plan_id"], ["study_plans.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_daily_study_plan_items_study_plan_id"), "daily_study_plan_items", ["study_plan_id"], unique=False)
-    op.create_index(op.f("ix_daily_study_plan_items_date"), "daily_study_plan_items", ["date"], unique=False)
+    if not _has_table("daily_study_plan_items"):
+        op.create_table(
+            "daily_study_plan_items",
+            sa.Column("study_plan_id", postgresql.UUID(as_uuid=True), nullable=False),
+            sa.Column("date", sa.Date(), nullable=False),
+            sa.Column("chapter_or_theme", sa.String(length=180), nullable=False),
+            sa.Column("activity_description", sa.Text(), nullable=True),
+            sa.Column("difficulty_level", sa.String(length=20), nullable=False),
+            sa.Column("estimated_duration_minutes", sa.Integer(), nullable=True),
+            sa.Column("status", sa.String(length=20), nullable=False),
+            sa.Column("is_active", sa.Boolean(), nullable=False),
+            sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.ForeignKeyConstraint(["study_plan_id"], ["study_plans.id"]),
+            sa.PrimaryKeyConstraint("id"),
+        )
+    _create_index_if_missing(op.f("ix_daily_study_plan_items_study_plan_id"), "daily_study_plan_items", ["study_plan_id"])
+    _create_index_if_missing(op.f("ix_daily_study_plan_items_date"), "daily_study_plan_items", ["date"])
 
-    # --- LGPD / primeiro acesso (usuários) ---
-    op.add_column("users", sa.Column("document", sa.String(length=14), nullable=True))
-    op.add_column(
+    # --- LGPD / primeiro acesso (usuarios) ---
+    _add_column_if_missing("users", sa.Column("document", sa.String(length=14), nullable=True))
+    _add_column_if_missing(
         "users",
         sa.Column("first_access_completed", sa.Boolean(), server_default=sa.text("false"), nullable=False),
     )
-    op.add_column(
+    _add_column_if_missing(
         "users",
         sa.Column("lgpd_accepted", sa.Boolean(), server_default=sa.text("false"), nullable=False),
     )
-    op.add_column("users", sa.Column("lgpd_accepted_at", sa.DateTime(), nullable=True))
-    op.create_index(op.f("ix_users_document"), "users", ["document"], unique=True)
+    _add_column_if_missing("users", sa.Column("lgpd_accepted_at", sa.DateTime(), nullable=True))
+    _create_index_if_missing(op.f("ix_users_document"), "users", ["document"], unique=True)
 
 
 def downgrade() -> None:

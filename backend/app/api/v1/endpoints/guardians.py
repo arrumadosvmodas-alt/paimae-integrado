@@ -1,15 +1,15 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.child_guardian import ChildGuardian
-from app.models.user import User
-from app.schemas.guardian import ChildGuardianCreate, ChildGuardianRead
+from app.models.user import GuardianProfile, User
+from app.schemas.guardian import ChildGuardianCreate, ChildGuardianRead, GuardianProfileRead, GuardianProfileUpsert
 from app.services.audit import record_audit
 from app.services.permissions import ensure_child_access, scoped_child_ids_query
 
@@ -49,3 +49,47 @@ def list_child_guardians(db: Annotated[Session, Depends(get_db)], current_user: 
     elif current_user.role != "admin":
         query = query.where(ChildGuardian.child_id.in_(scoped_child_ids_query(current_user)))
     return list(db.scalars(query))
+
+
+@router.get("/me/profile", response_model=GuardianProfileRead)
+def get_my_guardian_profile(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    if current_user.role != "guardian":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Perfil disponivel apenas para responsaveis.")
+    profile = db.scalar(select(GuardianProfile).where(GuardianProfile.guardian_id == current_user.id))
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Perfil do responsavel nao encontrado.")
+    return profile
+
+
+@router.put("/me/profile", response_model=GuardianProfileRead)
+def upsert_my_guardian_profile(
+    payload: GuardianProfileUpsert,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    if current_user.role != "guardian":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Perfil disponivel apenas para responsaveis.")
+
+    profile = db.scalar(select(GuardianProfile).where(GuardianProfile.guardian_id == current_user.id))
+    if not profile:
+        profile = GuardianProfile(guardian_id=current_user.id)
+        db.add(profile)
+        db.flush()
+
+    for key, value in payload.model_dump().items():
+        setattr(profile, key, value)
+
+    record_audit(
+        db,
+        actor=current_user,
+        action="guardian.profile_upsert",
+        entity_type="guardian_profile",
+        entity_id=profile.id,
+        payload={"onboarding_completed": profile.onboarding_completed},
+    )
+    db.commit()
+    db.refresh(profile)
+    return profile
