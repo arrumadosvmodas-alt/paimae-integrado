@@ -96,3 +96,113 @@ def update_child_status(
     db.commit()
     db.refresh(child)
     return child
+
+
+@router.get("/{child_id}/export-lgpd")
+def export_child_lgpd(
+    child_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    child = ensure_child_access(db, current_user, child_id)
+    
+    # Busca todos os dados vinculados ao aluno
+    from app.models.routine import RoutineItem
+    from app.models.task import Task
+    from app.models.pedagogy import DailySchoolRecord
+    from app.models.evolution import EvolutionEvent
+    from app.models.child_guardian import ChildGuardian
+    from fastapi.responses import JSONResponse
+    
+    routines = db.scalars(select(RoutineItem).where(RoutineItem.child_id == child_id)).all()
+    tasks = db.scalars(select(Task).where(Task.child_id == child_id)).all()
+    daily_records = db.scalars(select(DailySchoolRecord).where(DailySchoolRecord.child_id == child_id)).all()
+    evolution_events = db.scalars(select(EvolutionEvent).where(EvolutionEvent.child_id == child_id)).all()
+    guardians = db.scalars(select(ChildGuardian).where(ChildGuardian.child_id == child_id)).all()
+    
+    data = {
+        "child": {
+            "id": str(child.id),
+            "name": child.name,
+            "birth_date": child.birth_date.strftime("%Y-%m-%d") if child.birth_date else None,
+            "class_name": child.class_name,
+            "created_at": child.created_at.isoformat() if child.created_at else None,
+        },
+        "routines": [
+            {
+                "id": str(r.id),
+                "title": r.title,
+                "description": r.description,
+                "hour": r.hour,
+                "period": r.period,
+            } for r in routines
+        ],
+        "tasks": [
+            {
+                "id": str(t.id),
+                "title": t.title,
+                "description": t.description,
+                "due_date": t.due_date.strftime("%Y-%m-%d") if t.due_date else None,
+                "status": t.status,
+            } for t in tasks
+        ],
+        "daily_records": [
+            {
+                "id": str(dr.id),
+                "date": dr.date.strftime("%Y-%m-%d"),
+                "summary": dr.summary,
+                "observed_skills": dr.observed_skills,
+                "engagement_score": dr.engagement_score,
+            } for dr in daily_records
+        ],
+        "evolution_events": [
+            {
+                "id": str(ee.id),
+                "occurred_at": ee.occurred_at.isoformat(),
+                "notes": ee.notes,
+                "score": ee.score,
+            } for ee in evolution_events
+        ],
+        "guardians_linked": [
+            {
+                "guardian_id": str(g.guardian_id),
+                "can_view": g.can_view,
+                "can_edit": g.can_edit,
+            } for g in guardians
+        ]
+    }
+    
+    headers = {
+        "Content-Disposition": f"attachment; filename=portabilidade_aluno_{child.id}.json"
+    }
+    return JSONResponse(content=data, headers=headers)
+
+
+@router.delete("/{child_id}/forget-lgpd", status_code=status.HTTP_204_NO_CONTENT)
+def forget_child_lgpd(
+    child_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    child = ensure_child_access(db, current_user, child_id)
+    if current_user.role != "admin" and current_user.role != "guardian":
+        raise HTTPException(status_code=403, detail="Apenas responsáveis ou administradores podem remover definitivamente os dados.")
+        
+    from app.models.routine import RoutineItem
+    from app.models.task import Task
+    from app.models.pedagogy import DailySchoolRecord
+    from app.models.evolution import EvolutionEvent
+    from app.models.child_guardian import ChildGuardian
+    from sqlalchemy import delete
+    
+    db.execute(delete(RoutineItem).where(RoutineItem.child_id == child_id))
+    db.execute(delete(Task).where(Task.child_id == child_id))
+    db.execute(delete(DailySchoolRecord).where(DailySchoolRecord.child_id == child_id))
+    db.execute(delete(EvolutionEvent).where(EvolutionEvent.child_id == child_id))
+    db.execute(delete(ChildGuardian).where(ChildGuardian.child_id == child_id))
+    
+    db.delete(child)
+    
+    record_audit(db, actor=current_user, action="child.forget_lgpd", entity_type="child", entity_id=child_id, school_id=child.school_id)
+    db.commit()
+    return

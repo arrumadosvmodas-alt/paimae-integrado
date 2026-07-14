@@ -29,6 +29,7 @@ from app.schemas.pedagogy import (
     DailySchoolRecordRead,
     DailySchoolRecordUpdate,
     MaterialItemRead,
+    MaterialItemCreate,
     FamilyInteractionSuggestionRead,
 )
 from app.services.audit import record_audit
@@ -432,6 +433,94 @@ def update_material_status(
     db.commit()
     db.refresh(material)
     return material
+
+
+@router.delete("/materials/{material_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_material(
+    material_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    ensure_school_staff(current_user)
+    material = db.get(PedagogicalMaterial, material_id)
+    if not material:
+        raise HTTPException(status_code=404, detail="Material didático não encontrado.")
+    if current_user.role != "admin" and str(current_user.school_id) != str(material.school_id):
+        raise HTTPException(status_code=403, detail="Sem permissão para esta escola.")
+
+    db.delete(material)
+    db.commit()
+    return
+
+
+@router.post("/materials/{material_id}/items", response_model=MaterialItemRead, status_code=status.HTTP_201_CREATED)
+def create_material_item(
+    material_id: UUID,
+    payload: MaterialItemCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    ensure_school_staff(current_user)
+    material = db.get(PedagogicalMaterial, material_id)
+    if not material:
+        raise HTTPException(status_code=404, detail="Material didático não encontrado.")
+    if current_user.role != "admin" and str(current_user.school_id) != str(material.school_id):
+        raise HTTPException(status_code=403, detail="Sem permissão para esta escola.")
+
+    item = MaterialItem(
+        material_id=material.id,
+        chapter=payload.chapter,
+        page=payload.page,
+        theme=payload.theme,
+        description=payload.description,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.delete("/materials/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_material_item(
+    item_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    ensure_school_staff(current_user)
+    item = db.get(MaterialItem, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item didático não encontrado.")
+    material = db.get(PedagogicalMaterial, item.material_id)
+    if current_user.role != "admin" and str(current_user.school_id) != str(material.school_id):
+        raise HTTPException(status_code=403, detail="Sem permissão para esta escola.")
+
+    db.delete(item)
+    db.commit()
+    return
+
+
+@router.put("/materials/items/{item_id}", response_model=MaterialItemRead)
+def update_material_item(
+    item_id: UUID,
+    payload: MaterialItemCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    ensure_school_staff(current_user)
+    item = db.get(MaterialItem, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item didático não encontrado.")
+    material = db.get(PedagogicalMaterial, item.material_id)
+    if current_user.role != "admin" and str(current_user.school_id) != str(material.school_id):
+        raise HTTPException(status_code=403, detail="Sem permissão para esta escola.")
+
+    item.chapter = payload.chapter
+    item.page = payload.page
+    item.theme = payload.theme
+    item.description = payload.description
+    db.commit()
+    db.refresh(item)
+    return item
 
 
 # --- DAILY RECORDS ---

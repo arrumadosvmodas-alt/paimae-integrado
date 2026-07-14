@@ -6,6 +6,18 @@ import { api } from "../../../lib/api";
 import { BookOpen, Search, Plus, Trash2 } from "lucide-react";
 import type { School } from "../../../lib/types";
 
+const PEDAGOGICAL_LINES = [
+  "Construtivista (Jean Piaget)",
+  "Socioconstrutivista / Sócio-Interacionista (Lev Vygotsky)",
+  "Tradicional",
+  "Montessoriana (Maria Montessori)",
+  "Waldorf (Rudolf Steiner)",
+  "Freinetiana (Célestin Freinet)",
+  "Pedagogia Libertadora (Paulo Freire)",
+  "Reggio Emilia",
+  "Outra"
+];
+
 interface PedagogicalMaterialFormProps {
   schoolId?: string;
   schools?: School[];
@@ -28,17 +40,14 @@ export function PedagogicalMaterialForm({
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [subject, setSubject] = useState("");
-  const [pedagogicalLine, setPedagogicalLine] = useState("");
+  const [pedagogicalLineSelect, setPedagogicalLineSelect] = useState("Construtivista (Jean Piaget)");
+  const [customPedagogicalLine, setCustomPedagogicalLine] = useState("");
   const [objectives, setObjectives] = useState("");
   const [familyOrientation, setFamilyOrientation] = useState("");
   const [isLoadingISBN, setIsLoadingISBN] = useState(false);
   const [isLoadingSubmit, setIsLoadingSubmit] = useState(false);
 
-  // Itens do livro (Capítulos, páginas)
-  const [items, setItems] = useState<Array<{ chapter: string; page: string; theme: string; description: string }>>([]);
-  const [newItemTheme, setNewItemTheme] = useState("");
-  const [newItemChapter, setNewItemChapter] = useState("");
-  const [newItemPage, setNewItemPage] = useState("");
+
 
   // Sincroniza o schoolId externo ou seleciona o primeiro disponível
   useEffect(() => {
@@ -57,19 +66,27 @@ export function PedagogicalMaterialForm({
       setTitle(materialToEdit.title || "");
       setAuthor(materialToEdit.author || "");
       setSubject(materialToEdit.subject || "");
-      setPedagogicalLine(materialToEdit.pedagogical_line || "");
+      
+      const isPredefined = PEDAGOGICAL_LINES.includes(materialToEdit.pedagogical_line || "");
+      if (isPredefined) {
+        setPedagogicalLineSelect(materialToEdit.pedagogical_line || "");
+        setCustomPedagogicalLine("");
+      } else {
+        setPedagogicalLineSelect("Outra");
+        setCustomPedagogicalLine(materialToEdit.pedagogical_line || "");
+      }
+      
       setObjectives(materialToEdit.objectives || "");
       setFamilyOrientation(materialToEdit.family_orientation || "");
-      setItems(materialToEdit.items || []);
     } else {
       setIsbn("");
       setTitle("");
       setAuthor("");
       setSubject("");
-      setPedagogicalLine("");
+      setPedagogicalLineSelect("Construtivista (Jean Piaget)");
+      setCustomPedagogicalLine("");
       setObjectives("");
       setFamilyOrientation("");
-      setItems([]);
     }
   }, [materialToEdit]);
 
@@ -96,22 +113,6 @@ export function PedagogicalMaterialForm({
     }
   };
 
-  const handleAddItem = () => {
-    if (!newItemTheme.trim()) return;
-    setItems([...items, {
-      theme: newItemTheme.trim(),
-      chapter: newItemChapter.trim(),
-      page: newItemPage.trim(),
-      description: ""
-    }]);
-    setNewItemTheme("");
-    setNewItemChapter("");
-    setNewItemPage("");
-  };
-
-  const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
-  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -119,7 +120,8 @@ export function PedagogicalMaterialForm({
       notify("Selecione ou cadastre uma escola antes de adicionar o material.", "error");
       return;
     }
-    if (!title.trim() || !subject.trim() || !pedagogicalLine.trim()) {
+    const finalPedagogicalLine = pedagogicalLineSelect === "Outra" ? customPedagogicalLine.trim() : pedagogicalLineSelect;
+    if (!title.trim() || !subject.trim() || !finalPedagogicalLine) {
       notify("Preencha todos os campos obrigatórios: Título, Matéria e Linha Pedagógica.", "error");
       return;
     }
@@ -134,10 +136,9 @@ export function PedagogicalMaterialForm({
           author: author.trim() || null,
           isbn: isbn.trim() || null,
           subject: subject.trim(),
-          pedagogical_line: pedagogicalLine.trim(),
+          pedagogical_line: finalPedagogicalLine,
           objectives: objectives.trim() || null,
-          family_orientation: familyOrientation.trim() || null,
-          items: items.map(it => ({ chapter: it.chapter, page: it.page, theme: it.theme, description: it.description }))
+          family_orientation: familyOrientation.trim() || null
         });
       } else {
         await onSubmit({
@@ -146,10 +147,9 @@ export function PedagogicalMaterialForm({
           author: author.trim() || null,
           isbn: isbn.trim() || null,
           subject: subject.trim(),
-          pedagogical_line: pedagogicalLine.trim(),
+          pedagogical_line: finalPedagogicalLine,
           objectives: objectives.trim() || null,
-          family_orientation: familyOrientation.trim() || null,
-          items: items
+          family_orientation: familyOrientation.trim() || null
         });
         setTitle("");
         setAuthor("");
@@ -233,14 +233,34 @@ export function PedagogicalMaterialForm({
             disabled={isLoadingSubmit || !activeSchoolId}
           />
         </div>
-        <Input
-          label="Linha Pedagógica / Metodologia *"
-          placeholder="Ex: Construtivista, Tradicional"
-          value={pedagogicalLine}
-          onChange={(e) => setPedagogicalLine(e.target.value)}
-          required
-          disabled={isLoadingSubmit || !activeSchoolId}
-        />
+        <div>
+          <label className="block text-xs font-bold text-text-primary uppercase tracking-wider mb-1.5">
+            Linha Pedagógica / Metodologia (Reconhecida MEC) *
+          </label>
+          <select
+            value={pedagogicalLineSelect}
+            onChange={(e) => setPedagogicalLineSelect(e.target.value)}
+            disabled={isLoadingSubmit || !activeSchoolId}
+            className="w-full h-10 px-3 border border-border rounded-lg bg-surface text-text-primary focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition-all duration-200 text-sm"
+          >
+            {PEDAGOGICAL_LINES.map((line) => (
+              <option key={line} value={line}>
+                {line}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {pedagogicalLineSelect === "Outra" && (
+          <Input
+            label="Especifique a Linha Pedagógica *"
+            placeholder="Digite a linha pedagógica personalizada"
+            value={customPedagogicalLine}
+            onChange={(e) => setCustomPedagogicalLine(e.target.value)}
+            required
+            disabled={isLoadingSubmit || !activeSchoolId}
+          />
+        )}
         <Textarea
           label="Objetivos de Aprendizagem"
           placeholder="Ex: Compreender as quatro operações matemáticas básicas..."
@@ -256,64 +276,7 @@ export function PedagogicalMaterialForm({
           disabled={isLoadingSubmit || !activeSchoolId}
         />
 
-        {/* Adição de itens específicos do livro */}
-        <div className="border border-border p-4 rounded-xl bg-background/30 flex flex-col gap-3">
-          <span className="block text-xs font-bold text-text-primary uppercase tracking-wider">
-            Capítulos e Páginas do Material (Itens Didáticos)
-          </span>
 
-          <div className="flex flex-col gap-3">
-            <Input
-              label="Tema / Habilidade *"
-              placeholder="Ex: Multiplicação Simples"
-              value={newItemTheme}
-              onChange={(e) => setNewItemTheme(e.target.value)}
-              disabled={!activeSchoolId}
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                label="Capítulo"
-                placeholder="Ex: Cap. 2"
-                value={newItemChapter}
-                onChange={(e) => setNewItemChapter(e.target.value)}
-                disabled={!activeSchoolId}
-              />
-              <Input
-                label="Página"
-                placeholder="Ex: p. 45-50"
-                value={newItemPage}
-                onChange={(e) => setNewItemPage(e.target.value)}
-                disabled={!activeSchoolId}
-              />
-            </div>
-          </div>
-          <Button
-            type="button"
-            onClick={handleAddItem}
-            disabled={!newItemTheme.trim() || !activeSchoolId}
-            variant="outline"
-            className="w-full flex items-center justify-center gap-1 mt-1"
-          >
-            <Plus className="w-4 h-4" /> Adicionar Item ao Livro
-          </Button>
-
-          {items.length > 0 && (
-            <ul className="mt-2 flex flex-col gap-1.5 max-h-32 overflow-y-auto">
-              {items.map((item, idx) => (
-                <li key={idx} className="flex justify-between items-center text-xs p-2 bg-surface border border-border rounded-lg">
-                  <div>
-                    <span className="font-bold">{item.theme}</span>
-                    {item.chapter && <span className="text-text-muted"> - {item.chapter}</span>}
-                    {item.page && <span className="text-text-muted"> ({item.page})</span>}
-                  </div>
-                  <button type="button" onClick={() => handleRemoveItem(idx)} className="text-error hover:text-red-700">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
 
         <div className="flex gap-2 mt-2">
           {materialToEdit && (

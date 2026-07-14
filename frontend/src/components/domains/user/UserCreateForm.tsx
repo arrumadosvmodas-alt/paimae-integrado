@@ -16,6 +16,7 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [document, setDocument] = useState("");
   const [role, setRole] = useState("guardian");
   const [schoolId, setSchoolId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -25,12 +26,14 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
       setName(userToEdit.name || "");
       setEmail(userToEdit.email || "");
       setPassword(""); // Don't preload hashed password
+      setDocument(userToEdit.document || "");
       setRole(userToEdit.role || "guardian");
       setSchoolId(userToEdit.school_id || "");
     } else {
       setName("");
       setEmail("");
       setPassword("");
+      setDocument("");
       setRole("guardian");
       setSchoolId("");
     }
@@ -39,7 +42,7 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!name.trim() || !email.trim()) return;
-    if (!userToEdit && !password.trim()) return;
+    if (!userToEdit && role === "admin" && !password.trim()) return;
 
     setIsLoading(true);
     try {
@@ -51,18 +54,21 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
           password: password.trim() || undefined,
           role: role,
           school_id: role === "guardian" || role === "admin" ? null : schoolId || null,
+          document: role === "admin" ? document.trim() : null,
         });
       } else {
         await onSubmit({
           name: name.trim(),
           email: email.trim(),
-          password: password.trim(),
+          password: password.trim() || undefined,
           role: role,
           school_id: role === "guardian" || role === "admin" ? null : schoolId || null,
+          document: role === "admin" ? document.trim() : null,
         });
         setName("");
         setEmail("");
         setPassword("");
+        setDocument("");
         setRole("guardian");
         setSchoolId("");
       }
@@ -95,12 +101,12 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
           disabled={isLoading}
         />
         <Input
-          label={userToEdit ? "Nova Senha (deixe em branco para manter)" : "Senha *"}
+          label={userToEdit ? "Nova Senha (deixe em branco para manter)" : role === "admin" ? "Senha *" : "Senha (Opcional - usuário definirá no Primeiro Acesso)"}
           type="password"
           placeholder={userToEdit ? "Mínimo 8 caracteres" : "Mínimo 8 caracteres"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required={!userToEdit}
+          required={!userToEdit && role === "admin"}
           disabled={isLoading}
         />
         
@@ -116,6 +122,17 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
           <option value="school_admin">Escola (Gestor)</option>
           <option value="admin">Administrador Geral</option>
         </Select>
+
+        {role === "admin" && (
+          <Input
+            label="CPF do Administrador *"
+            placeholder="Apenas números ou formatado (ex: 000.000.000-00)"
+            value={document}
+            onChange={(e) => setDocument(e.target.value)}
+            required
+            disabled={isLoading}
+          />
+        )}
 
         {(role === "teacher" || role === "school_admin") && schools.length > 0 && (
           <Select

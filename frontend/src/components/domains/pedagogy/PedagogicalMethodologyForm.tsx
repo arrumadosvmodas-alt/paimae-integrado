@@ -5,6 +5,19 @@ import { Button } from "../../ui/Button";
 import { GraduationCap, X } from "lucide-react";
 import type { School, PedagogicalMethodology } from "../../../lib/types";
 
+const METHODOLOGIES = [
+  "Aprendizagem Baseada em Projetos (ABP)",
+  "Aprendizagem Baseada em Problemas (ABP)",
+  "Sala de Aula Invertida (Flipped Classroom)",
+  "Ensino Híbrido (Blended Learning)",
+  "Ensino Tradicional",
+  "Método Montessori",
+  "Pedagogia Waldorf",
+  "Pedagogia Freinet",
+  "Aprendizagem Cooperativa",
+  "Outra"
+];
+
 interface PedagogicalMethodologyFormProps {
   schoolId?: string;
   schools?: School[];
@@ -23,7 +36,8 @@ export function PedagogicalMethodologyForm({
   notify,
 }: PedagogicalMethodologyFormProps) {
   const [selectedSchoolId, setSelectedSchoolId] = useState(propSchoolId || "");
-  const [name, setName] = useState("");
+  const [methodologySelect, setMethodologySelect] = useState("Aprendizagem Baseada em Projetos (ABP)");
+  const [customMethodology, setCustomMethodology] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -38,10 +52,18 @@ export function PedagogicalMethodologyForm({
   useEffect(() => {
     if (methodologyToEdit) {
       setSelectedSchoolId(methodologyToEdit.school_id || "");
-      setName(methodologyToEdit.name || "");
+      const isPredefined = METHODOLOGIES.includes(methodologyToEdit.name || "");
+      if (isPredefined) {
+        setMethodologySelect(methodologyToEdit.name || "");
+        setCustomMethodology("");
+      } else {
+        setMethodologySelect("Outra");
+        setCustomMethodology(methodologyToEdit.name || "");
+      }
       setDescription(methodologyToEdit.description || "");
     } else {
-      setName("");
+      setMethodologySelect("Aprendizagem Baseada em Projetos (ABP)");
+      setCustomMethodology("");
       setDescription("");
     }
   }, [methodologyToEdit]);
@@ -54,7 +76,8 @@ export function PedagogicalMethodologyForm({
       notify("Selecione ou cadastre uma escola primeiro.", "error");
       return;
     }
-    if (!name.trim()) {
+    const finalName = methodologySelect === "Outra" ? customMethodology.trim() : methodologySelect;
+    if (!finalName) {
       notify("Preencha o nome da metodologia.", "error");
       return;
     }
@@ -65,16 +88,16 @@ export function PedagogicalMethodologyForm({
         await onSubmit({
           id: methodologyToEdit.id,
           school_id: activeSchoolId,
-          name: name.trim(),
+          name: finalName,
           description: description.trim() || null,
         });
       } else {
         await onSubmit({
           school_id: activeSchoolId,
-          name: name.trim(),
+          name: finalName,
           description: description.trim() || null,
         });
-        setName("");
+        setCustomMethodology("");
         setDescription("");
       }
     } finally {
@@ -108,14 +131,34 @@ export function PedagogicalMethodologyForm({
           </div>
         )}
 
-        <Input
-          label="Nome da Metodologia *"
-          placeholder="Ex: Método Montessori"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          disabled={isLoading}
-        />
+        <div>
+          <label className="block text-xs font-bold text-text-primary uppercase tracking-wider mb-1.5">
+            Metodologia Pedagógica (Reconhecida MEC) *
+          </label>
+          <select
+            value={methodologySelect}
+            onChange={(e) => setMethodologySelect(e.target.value)}
+            disabled={isLoading}
+            className="w-full h-10 px-3 border border-border rounded-lg bg-surface text-text-primary focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition-all duration-200 text-sm"
+          >
+            {METHODOLOGIES.map((met) => (
+              <option key={met} value={met}>
+                {met}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {methodologySelect === "Outra" && (
+          <Input
+            label="Especifique a Metodologia *"
+            placeholder="Ex: Metodologia Ativa Personalizada"
+            value={customMethodology}
+            onChange={(e) => setCustomMethodology(e.target.value)}
+            required
+            disabled={isLoading}
+          />
+        )}
 
         <Textarea
           label="Descrição"

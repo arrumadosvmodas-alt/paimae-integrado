@@ -9,6 +9,7 @@ interface PedagogicalMaterialListProps {
   materials: PedagogicalMaterial[];
   onEdit?: (material: PedagogicalMaterial) => void;
   onToggleActive?: (id: string) => Promise<void>;
+  onDeleteItem?: (itemId: string) => Promise<void>;
   showActions?: boolean;
 }
 
@@ -16,6 +17,7 @@ export function PedagogicalMaterialList({
   materials,
   onEdit,
   onToggleActive,
+  onDeleteItem,
   showActions = false,
 }: PedagogicalMaterialListProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -121,8 +123,18 @@ export function PedagogicalMaterialList({
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {material.items.map((it, idx) => (
-                      <Badge key={idx} variant="tertiary" className="text-[9px]">
-                        {it.chapter ? `${it.chapter}: ` : ""}{it.theme} {it.page ? `(p. ${it.page})` : ""}
+                      <Badge key={idx} variant="tertiary" className="text-[9px] flex items-center gap-1">
+                        <span>{it.chapter ? `${it.chapter}: ` : ""}{it.theme} {it.page ? `(p. ${it.page})` : ""}</span>
+                        {showActions && onDeleteItem && (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteItem(it.id)}
+                            className="ml-1 hover:text-error hover:bg-error/10 rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold text-[10px] focus:outline-none transition-all duration-200"
+                            title="Excluir capítulo"
+                          >
+                            ×
+                          </button>
+                        )}
                       </Badge>
                     ))}
                   </div>
