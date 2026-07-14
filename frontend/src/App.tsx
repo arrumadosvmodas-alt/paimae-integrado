@@ -1282,7 +1282,8 @@ function DashboardPage({
                 <RoutineList routines={routines} />
                 <TaskList tasks={tasks} />
               </section>
-            </>          ) : (
+            </>
+          ) : (
             <MetricsDashboard childId={selectedChildId} />
           )}
         </div>
