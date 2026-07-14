@@ -24,7 +24,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api.yourdomain.com/:path*"
+      "destination": "https://backend-api-production-2aff.up.railway.app"
     },
     {
       "source": "/:path*",
