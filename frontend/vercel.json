@@ -1,13 +1,9 @@
 {
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": "vite",
-  "outputDirectory": "dist",
-  "env": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
     {
-      "key": "VITE_API_URL",
-      "value": "@vite_api_url"
+      "source": "/api/:path*",
+      "destination": "https://backend-api-production-2aff.up.railway.app"
     }
   ],
   "headers": [
@@ -19,16 +15,6 @@
           "value": "no-cache, no-store, must-revalidate"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://backend-api-production-2aff.up.railway.app"
-    },
-    {
-      "source": "/:path*",
-      "destination": "/"
     }
   ]
 }
