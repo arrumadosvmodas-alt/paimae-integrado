@@ -18,46 +18,6 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # --- Interações (pré-requisito de learning_histories) ---
-    op.create_table(
-        "interactions",
-        sa.Column("child_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("material_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("scheduled_at", sa.Date(), nullable=False),
-        sa.Column("sent_at", sa.Date(), nullable=True),
-        sa.Column("recipient_type", sa.String(length=20), nullable=False),
-        sa.Column("message", sa.Text(), nullable=False),
-        sa.Column("context_json", sa.JSON(), nullable=True),
-        sa.Column("status", sa.String(length=20), nullable=False),
-        sa.Column("is_active", sa.Boolean(), nullable=False),
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["child_id"], ["children.id"]),
-        sa.ForeignKeyConstraint(["material_id"], ["pedagogical_materials.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_interactions_child_id"), "interactions", ["child_id"], unique=False)
-    op.create_index(op.f("ix_interactions_scheduled_at"), "interactions", ["scheduled_at"], unique=False)
-
-    op.create_table(
-        "interaction_responses",
-        sa.Column("interaction_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("responder_type", sa.String(length=20), nullable=False),
-        sa.Column("response_text", sa.Text(), nullable=False),
-        sa.Column("response_score", sa.Integer(), nullable=True),
-        sa.Column("attachment_url", sa.String(length=500), nullable=True),
-        sa.Column("responded_at", sa.Date(), nullable=False),
-        sa.Column("ai_evaluation", sa.Text(), nullable=True),
-        sa.Column("is_active", sa.Boolean(), nullable=False),
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["interaction_id"], ["interactions.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_interaction_responses_interaction_id"), "interaction_responses", ["interaction_id"], unique=False)
-
     # --- Adaptive learning (Fase C) ---
     op.create_table(
         "learning_profiles",
@@ -480,6 +440,3 @@ def downgrade() -> None:
     op.drop_table("adaptive_recommendations")
     op.drop_table("learning_histories")
     op.drop_table("learning_profiles")
-
-    op.drop_table("interaction_responses")
-    op.drop_table("interactions")

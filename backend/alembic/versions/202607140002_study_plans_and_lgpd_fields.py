@@ -74,6 +74,45 @@ def upgrade() -> None:
     op.create_index(op.f("ix_daily_study_plan_items_study_plan_id"), "daily_study_plan_items", ["study_plan_id"], unique=False)
     op.create_index(op.f("ix_daily_study_plan_items_date"), "daily_study_plan_items", ["date"], unique=False)
 
+    op.create_table(
+        "interactions",
+        sa.Column("child_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("material_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("scheduled_at", sa.Date(), nullable=False),
+        sa.Column("sent_at", sa.Date(), nullable=True),
+        sa.Column("recipient_type", sa.String(length=20), nullable=False),
+        sa.Column("message", sa.Text(), nullable=False),
+        sa.Column("context_json", sa.JSON(), nullable=True),
+        sa.Column("status", sa.String(length=20), nullable=False),
+        sa.Column("is_active", sa.Boolean(), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(["child_id"], ["children.id"]),
+        sa.ForeignKeyConstraint(["material_id"], ["pedagogical_materials.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_interactions_child_id"), "interactions", ["child_id"], unique=False)
+    op.create_index(op.f("ix_interactions_scheduled_at"), "interactions", ["scheduled_at"], unique=False)
+
+    op.create_table(
+        "interaction_responses",
+        sa.Column("interaction_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("responder_type", sa.String(length=20), nullable=False),
+        sa.Column("response_text", sa.Text(), nullable=False),
+        sa.Column("response_score", sa.Integer(), nullable=True),
+        sa.Column("attachment_url", sa.String(length=500), nullable=True),
+        sa.Column("responded_at", sa.Date(), nullable=False),
+        sa.Column("ai_evaluation", sa.Text(), nullable=True),
+        sa.Column("is_active", sa.Boolean(), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(["interaction_id"], ["interactions.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_interaction_responses_interaction_id"), "interaction_responses", ["interaction_id"], unique=False)
+
     # --- LGPD / primeiro acesso (usuários) ---
     op.add_column("users", sa.Column("document", sa.String(length=14), nullable=True))
     op.add_column(
@@ -95,6 +134,11 @@ def downgrade() -> None:
     op.drop_column("users", "first_access_completed")
     op.drop_column("users", "document")
 
+    op.drop_index(op.f("ix_interaction_responses_interaction_id"), table_name="interaction_responses")
+    op.drop_table("interaction_responses")
+    op.drop_index(op.f("ix_interactions_scheduled_at"), table_name="interactions")
+    op.drop_index(op.f("ix_interactions_child_id"), table_name="interactions")
+    op.drop_table("interactions")
     op.drop_index(op.f("ix_daily_study_plan_items_date"), table_name="daily_study_plan_items")
     op.drop_index(op.f("ix_daily_study_plan_items_study_plan_id"), table_name="daily_study_plan_items")
     op.drop_table("daily_study_plan_items")
