@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import ai, audit, auth, children, guardians, notifications, routines, schools, tasks, evolution, pedagogy, reports, study_plan, material_processing
+from app.api.v1.endpoints import ai, audit, auth, children, guardians, notifications, routines, schools, tasks, evolution, pedagogy, reports, study_plan, material_processing, orchestration
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -16,5 +16,6 @@ api_router.include_router(audit.router, prefix="/audit-logs", tags=["audit"])
 api_router.include_router(pedagogy.router, prefix="/pedagogy", tags=["pedagogy"])
 api_router.include_router(study_plan.router, prefix="/study-plans", tags=["study-plans"])
 api_router.include_router(material_processing.router, prefix="/materials", tags=["materials"])
+api_router.include_router(orchestration.router, prefix="/orchestration", tags=["orchestration"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 

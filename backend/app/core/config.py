@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     google_vision_api_key: str = ""
     google_gemini_api_key: str = ""
 
+    # Email (SMTP) - para notificações
+    smtp_server: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    from_email: str = "noreply@paimae.local"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @model_validator(mode="after")
