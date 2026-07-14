@@ -360,7 +360,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
   async function handleLogin(event: React.FormEvent) {
     event.preventDefault();
     if (!loginEmail || !loginPassword) return;
-    
+
     setIsLoginLoading(true);
     try {
       const nextToken = await login(loginEmail, loginPassword);
@@ -435,7 +435,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
         {/* Elemento de iluminação decorativo */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full blur-[80px] -mr-40 -mt-40 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-black/10 rounded-full blur-[60px] -ml-20 -mb-20 pointer-events-none" />
-        
+
         <div className="relative z-10 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
             <GraduationCap className="w-6 h-6" />
@@ -1162,128 +1162,127 @@ function DashboardPage({
 
           {activeDashboardTab === "overview" ? (
             <>
-              {/* Seção 1: Nova Rotina / Nova Tarefa */}
-          {showPedagogyCreate && (
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <RoutineCreateForm
-                childId={selectedChildId}
-                onSubmit={(payload) => onSubmit("/api/v1/routines", payload, "Rotina criada com sucesso.")}
-              />
-              <TaskCreateForm
-                childId={selectedChildId}
-                onSubmit={(payload) => onSubmit("/api/v1/tasks", payload, "Tarefa criada com sucesso.")}
-              />
-            </section>
-          )}
+              {/* 1. Modulo Pedagogico */}
+              <div className="border-t border-border/60 pt-6 mt-2">
+                <h3 className="text-sm font-black uppercase tracking-wider text-text-primary mb-4 flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-primary" /> Modulo Pedagogico Integrado
+                </h3>
 
-          {/* Seção 2: Notificações / Evolução por IA */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <NotificationList
-              notifications={notifications}
-              childId={selectedChildId}
-              onGenerateToday={async () => {
-                await onSubmit(
-                  "/api/v1/notifications/generate",
-                  { child_id: selectedChildId, target_date: new Date().toISOString().slice(0, 10) },
-                  "Notificações geradas para o dia de hoje."
-                );
-              }}
-              onCompleteNotification={onCompleteNotification}
-              showGenerateButton={showPedagogyCreate}
-            />
-            <div className="flex flex-col gap-6">
-              {showPedagogyCreate && (
-                <EvolutionEventCreateForm
-                  childId={selectedChildId}
-                  onSubmit={(payload) => onSubmit("/api/v1/evolution-events", payload, "Evento de evolução registrado com sucesso.")}
-                />
-              )}
-              <EvolutionSummary
-                childId={selectedChildId}
-                summaryText={summary}
-                onGenerateSummary={onGenerateAISummary}
-              />
-              <FamilyInteractions
-                childId={selectedChildId}
-                notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
-              />
-            </div>
-          </section>
+                {selectedChildId && (
+                  <div className="mb-6">
+                    <SchoolScheduleManager
+                      childId={selectedChildId}
+                      schoolId={selectedChild?.school_id}
+                      materials={materials}
+                      canEdit={canManageSchedule}
+                      notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
+                    />
+                  </div>
+                )}
 
-          {/* Seção Pedagógica Integrada */}
-          <div className="border-t border-border/60 pt-6 mt-2">
-            <h3 className="text-sm font-black uppercase tracking-wider text-text-primary mb-4 flex items-center gap-2">
-              <GraduationCap className="w-5 h-5 text-primary" /> Módulo Pedagógico Integrado
-            </h3>
-            
-            {selectedChildId && (
-              <div className="mb-6">
-                <SchoolScheduleManager
-                  childId={selectedChildId}
-                  schoolId={selectedChild?.school_id}
-                  materials={materials}
-                  canEdit={canManageSchedule}
-                  notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
-                />
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  {showPedagogyCreate && (
+                    <div className="xl:col-span-1">
+                      <DailyRecordForm
+                        childId={selectedChildId}
+                        recordToEdit={dailyRecordToEdit}
+                        onCancelEdit={() => setDailyRecordToEdit(null)}
+                        onSubmit={async (payload) => {
+                          await onSubmit("/api/v1/pedagogy/daily-records", payload, dailyRecordToEdit ? "Relatorio diario atualizado." : "Relatorio diario registrado.");
+                          setDailyRecordToEdit(null);
+                        }}
+                        notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
+                      />
+                    </div>
+                  )}
+                  <div className={`${showPedagogyCreate ? "xl:col-span-2" : "xl:col-span-3"} grid grid-cols-1 md:grid-cols-2 gap-6`}>
+                    <DailyRecordList
+                      records={dailyRecords}
+                      showActions={showPedagogyCreate}
+                      onEdit={(r) => setDailyRecordToEdit(r)}
+                      onToggleActive={async (id) => {
+                        const record = dailyRecords.find((item) => item.id === id);
+                        await onToggleActive("/api/v1/pedagogy/daily-records", id, record?.is_active !== false);
+                      }}
+                    />
+                    <PedagogicalMaterialList
+                      materials={materials}
+                      showActions={showPedagogyCreate}
+                      onEdit={(m) => setMaterialToEdit(m)}
+                      onToggleActive={async (id) => {
+                        const material = materials.find((item) => item.id === id);
+                        await onToggleActive("/api/v1/pedagogy/materials", id, material?.is_active !== false);
+                      }}
+                      onDeleteItem={async (itemId) => {
+                        if (window.confirm("Deseja realmente excluir este capitulo do livro?")) {
+                          try {
+                            await api(`/api/v1/pedagogy/materials/items/${itemId}`, { method: "DELETE" });
+                            notify("Capitulo excluido com sucesso!");
+                            await loadBase();
+                          } catch (err) {
+                            notify(err instanceof Error ? err.message : "Erro ao excluir capitulo.", "error");
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
-            )}
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              {showPedagogyCreate && (
-                <div className="xl:col-span-1">
-                  <DailyRecordForm
+              {/* 2. Notificacoes e acompanhamento */}
+              <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <NotificationList
+                  notifications={notifications}
+                  childId={selectedChildId}
+                  onGenerateToday={async () => {
+                    await onSubmit(
+                      "/api/v1/notifications/generate",
+                      { child_id: selectedChildId, target_date: new Date().toISOString().slice(0, 10) },
+                      "Notificacoes geradas para o dia de hoje."
+                    );
+                  }}
+                  onCompleteNotification={onCompleteNotification}
+                  showGenerateButton={showPedagogyCreate}
+                />
+                <div className="flex flex-col gap-6">
+                  {showPedagogyCreate && (
+                    <EvolutionEventCreateForm
+                      childId={selectedChildId}
+                      onSubmit={(payload) => onSubmit("/api/v1/evolution-events", payload, "Evento de evolucao registrado com sucesso.")}
+                    />
+                  )}
+                  <EvolutionSummary
                     childId={selectedChildId}
-                    recordToEdit={dailyRecordToEdit}
-                    onCancelEdit={() => setDailyRecordToEdit(null)}
-                    onSubmit={async (payload) => {
-                      await onSubmit("/api/v1/pedagogy/daily-records", payload, dailyRecordToEdit ? "Relatório diário atualizado." : "Relatório diário registrado.");
-                      setDailyRecordToEdit(null);
-                    }}
+                    summaryText={summary}
+                    onGenerateSummary={onGenerateAISummary}
+                  />
+                  <FamilyInteractions
+                    childId={selectedChildId}
                     notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
                   />
                 </div>
-              )}
-              <div className={`${showPedagogyCreate ? "xl:col-span-2" : "xl:col-span-3"} grid grid-cols-1 md:grid-cols-2 gap-6`}>
-                <DailyRecordList
-                  records={dailyRecords}
-                  showActions={showPedagogyCreate}
-                  onEdit={(r) => setDailyRecordToEdit(r)}
-                  onToggleActive={async (id) => {
-                    const record = dailyRecords.find((item) => item.id === id);
-                    await onToggleActive("/api/v1/pedagogy/daily-records", id, record?.is_active !== false);
-                  }}
-                />
-                <PedagogicalMaterialList
-                  materials={materials}
-                  showActions={showPedagogyCreate}
-                  onEdit={(m) => setMaterialToEdit(m)}
-                  onToggleActive={async (id) => {
-                    const material = materials.find((item) => item.id === id);
-                    await onToggleActive("/api/v1/pedagogy/materials", id, material?.is_active !== false);
-                  }}
-                  onDeleteItem={async (itemId) => {
-                    if (window.confirm("Deseja realmente excluir este capítulo do livro?")) {
-                      try {
-                        await api(`/api/v1/pedagogy/materials/items/${itemId}`, { method: "DELETE" });
-                        notify("Capítulo excluído com sucesso!");
-                        await loadBase();
-                      } catch (err) {
-                        notify(err instanceof Error ? err.message : "Erro ao excluir capítulo.", "error");
-                      }
-                    }
-                  }}
-                />
-              </div>
-            </div>
-          </div>
+              </section>
 
-              {/* Seção 3: Visualização em Listas / Tabelas */}
+              {/* 3. Rotina e tarefas */}
+              {showPedagogyCreate && (
+                <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <RoutineCreateForm
+                    childId={selectedChildId}
+                    onSubmit={(payload) => onSubmit("/api/v1/routines", payload, "Rotina criada com sucesso.")}
+                  />
+                  <TaskCreateForm
+                    childId={selectedChildId}
+                    onSubmit={(payload) => onSubmit("/api/v1/tasks", payload, "Tarefa criada com sucesso.")}
+                  />
+                </section>
+              )}
+
+              {/* 4. Listas operacionais */}
               <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <RoutineList routines={routines} />
                 <TaskList tasks={tasks} />
               </section>
-            </>
-          ) : (
+            </>          ) : (
             <MetricsDashboard childId={selectedChildId} />
           )}
         </div>
