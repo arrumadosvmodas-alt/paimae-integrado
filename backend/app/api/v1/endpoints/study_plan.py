@@ -23,6 +23,7 @@ from app.schemas.study_plan import (
     InteractionUpdate,
     InteractionResponseCreate,
     InteractionResponseRead,
+    InteractionResponseUpdate,
 )
 from app.services.audit import record_audit
 from app.services.permissions import ensure_child_access, ensure_school_access
