@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     supabase_key: str = ""
     supabase_bucket: str = "paimae-storage"
 
+    # Google APIs (Vision OCR + Gemini LLM)
+    google_vision_api_key: str = ""
+    google_gemini_api_key: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @model_validator(mode="after")
