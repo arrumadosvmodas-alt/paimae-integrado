@@ -58,6 +58,8 @@ export type User = {
   role: string;
   school_id: string | null;
   is_active?: boolean;
+  document?: string | null;
+  first_access_completed?: boolean;
 };
 
 export type PedagogicalMethodology = {
@@ -108,4 +110,136 @@ export type DailySchoolRecord = {
   is_active?: boolean;
 };
 
+// ===== FASE B: Upload e Processamento =====
+export type PedagogicalMaterialWithProcessing = PedagogicalMaterial & {
+  file_url?: string;
+  extracted_text?: string;
+  ai_analysis?: Record<string, any>;
+  processing_status: "pending" | "processing" | "completed" | "failed";
+  processing_error?: string;
+};
+
+// ===== FASE C: Orquestração =====
+export type StudyPlan = {
+  id: string;
+  child_id: string;
+  material_id: string;
+  start_date: string;
+  end_date?: string;
+  ai_generated_plan?: string;
+  status: "draft" | "active" | "completed" | "paused";
+  daily_items: DailyStudyPlanItem[];
+  is_active: boolean;
+};
+
+export type DailyStudyPlanItem = {
+  id: string;
+  study_plan_id: string;
+  date: string;
+  chapter_or_theme: string;
+  activity_description?: string;
+  difficulty_level: "easy" | "medium" | "hard";
+  estimated_duration_minutes?: number;
+  status: "pending" | "in_progress" | "completed" | "skipped";
+  is_active: boolean;
+};
+
+export type Interaction = {
+  id: string;
+  child_id: string;
+  material_id?: string;
+  scheduled_at: string;
+  sent_at?: string;
+  recipient_type: "child" | "parent";
+  message: string;
+  context_json?: Record<string, any>;
+  status: "scheduled" | "sent" | "read" | "not_sent";
+  responses: InteractionResponse[];
+  is_active: boolean;
+};
+
+export type InteractionResponse = {
+  id: string;
+  interaction_id: string;
+  responder_type: "child" | "parent";
+  response_text: string;
+  response_score?: number;
+  attachment_url?: string;
+  responded_at: string;
+  ai_evaluation?: string;
+  is_active: boolean;
+};
+
+// ===== FASE D: Aprendizagem Adaptativa =====
+export type LearningProfile = {
+  id: string;
+  child_id: string;
+  visual_preference: number;
+  auditory_preference: number;
+  kinesthetic_preference: number;
+  learning_speed: number;
+  confidence_level: number;
+  retention_rate: number;
+  competencies: Record<string, number>;
+  identified_challenges: Record<string, any>;
+  engagement_level: number;
+  use_adaptive_difficulty: boolean;
+  is_active: boolean;
+};
+
+export type LearningHistory = {
+  id: string;
+  child_id: string;
+  interaction_id?: string;
+  response_id?: string;
+  theme: string;
+  activity_type: string;
+  difficulty_presented: "easy" | "medium" | "hard";
+  was_successful: boolean;
+  score?: number;
+  time_spent_seconds?: number;
+  feedback?: string;
+  effective_styles: string[];
+  activity_date: string;
+  is_active: boolean;
+};
+
+export type AdaptiveRecommendation = {
+  id: string;
+  child_id: string;
+  learning_profile_id: string;
+  recommended_theme: string;
+  recommended_difficulty: "easy" | "medium" | "hard";
+  recommended_style: string;
+  confidence: number;
+  reason?: string;
+  predicted_success_rate: number;
+  risk_of_dropout: number;
+  status: "pending" | "applied" | "completed";
+  is_active: boolean;
+};
+
+export type LearningMetrics = {
+  child_id: string;
+  profile: LearningProfile;
+  total_activities: number;
+  successful_activities: number;
+  overall_success_rate: number;
+  average_engagement: number;
+  themes_mastered: string[];
+  themes_in_progress: string[];
+  themes_struggling: string[];
+  predicted_next_success_rate: number;
+  dropout_risk: "low" | "medium" | "high";
+  recommendations: string[];
+};
+
+// ===== Extensão de Types Existentes =====
+export type ChildExtended = Child & {
+  grade?: string;
+  shift?: string;
+  preferences?: Record<string, any>;
+  difficulties?: Record<string, any>;
+  observations?: string;
+};
 
