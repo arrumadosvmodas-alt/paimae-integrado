@@ -188,11 +188,12 @@ export function BookUpload({ materialId, onUploadComplete }: BookUploadProps) {
           message={toastMessage}
           type={
             status === "complete"
-              ? "success"
+              ? "ok"
               : status === "error"
                 ? "error"
-                : "info"
+                : "ok"
           }
+          onClose={() => setToastMessage(null)}
         />
       )}
     </>

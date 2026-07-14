@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { Bell, BookOpen, ClipboardList, GraduationCap, Sparkles, UserPlus, School as SchoolIcon, LayoutDashboard, ChevronDown, ChevronUp, Users, Bookmark, Shield, Download } from "lucide-react";
+import { Bell, BookOpen, ClipboardList, GraduationCap, Sparkles, UserPlus, School as SchoolIcon, LayoutDashboard, ChevronDown, ChevronUp, Users, Bookmark, Shield, Download, Trash2 } from "lucide-react";
 
 import { api, getToken, login, setToken } from "./lib/api";
 import type { Child, EvolutionEvent, Notification, Routine, School, Task, User, DailySchoolRecord, PedagogicalMaterial, PedagogicalMethodology } from "./lib/types";
@@ -288,6 +288,7 @@ function AppRoutes() {
                 materials={materials}
                 methodologies={methodologies}
                 usersList={usersList}
+                loadBase={loadBase}
                 summary={summary}
                 isLoadingData={isLoadingData}
                 onLogout={handleLogout}
@@ -656,6 +657,7 @@ interface DashboardPageProps {
   onCompleteNotification: (id: string) => Promise<void>;
   onGenerateAISummary: () => Promise<void>;
   notify: (msg: string, type?: ToastType) => void;
+  loadBase: () => Promise<void>;
 }
 
 function DashboardPage({
@@ -681,6 +683,7 @@ function DashboardPage({
   onCompleteNotification,
   onGenerateAISummary,
   notify,
+  loadBase,
 }: DashboardPageProps) {
   const [isSchoolsExpanded, setIsSchoolsExpanded] = useState(false);
   const [isChildrenExpanded, setIsChildrenExpanded] = useState(false);

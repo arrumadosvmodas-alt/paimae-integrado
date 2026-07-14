@@ -1,0 +1,81 @@
+name: Deploy Backend (Railway)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'Dockerfile'
+      - '.github/workflows/backend-deploy.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: paimae
+          POSTGRES_PASSWORD: paimae
+          POSTGRES_DB: paimae_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+
+    - name: Run tests
+      env:
+        DATABASE_URL: postgresql://paimae:paimae@localhost:5432/paimae_test
+        JWT_SECRET_KEY: test-secret
+      run: |
+        cd backend
+        pytest --cov=app --cov-report=xml
+
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./backend/coverage.xml
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Deploy to Railway
+      uses: ConductorOne/railway-action@v1
+      with:
+        token: ${{ secrets.RAILWAY_TOKEN }}
+        service: ${{ secrets.RAILWAY_BACKEND_SERVICE_ID }}
+      env:
+        DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        GOOGLE_VISION_API_KEY: ${{ secrets.GOOGLE_VISION_API_KEY }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}

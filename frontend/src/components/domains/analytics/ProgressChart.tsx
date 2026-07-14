@@ -85,7 +85,7 @@ export function ProgressChart({ childId, days = 30 }: ProgressChartProps) {
           <YAxis />
           <Tooltip
             formatter={(value: number) => value.toFixed(1)}
-            labelFormatter={(label) => `Data: ${label}`}
+            labelFormatter={(label: string) => `Data: ${label}`}
           />
           <Legend />
           <Line

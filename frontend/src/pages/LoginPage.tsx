@@ -146,7 +146,8 @@ export function LoginPage() {
       {toastMessage && (
         <Toast
           message={toastMessage}
-          type={toastMessage.includes("❌") ? "error" : "success"}
+          type={toastMessage.includes("❌") ? "error" : "ok"}
+          onClose={() => setToastMessage(null)}
         />
       )}
     </div>

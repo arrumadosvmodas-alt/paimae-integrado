@@ -60,6 +60,8 @@ export type User = {
   is_active?: boolean;
   document?: string | null;
   first_access_completed?: boolean;
+  lgpd_accepted?: boolean;
+  lgpd_accepted_at?: string | null;
 };
 
 export type PedagogicalMethodology = {

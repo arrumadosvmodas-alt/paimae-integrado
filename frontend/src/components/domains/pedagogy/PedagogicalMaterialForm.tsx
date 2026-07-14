@@ -101,7 +101,7 @@ export function PedagogicalMaterialForm({
         setTitle(res.data.title || "");
         setAuthor(res.data.author || "");
         setSubject(res.data.subject || "");
-        setPedagogicalLine(res.data.pedagogical_line || "");
+        setPedagogicalLineSelect(res.data.pedagogical_line || "");
         setObjectives(res.data.objectives || "");
         setFamilyOrientation(res.data.family_orientation || "");
         notify("ISBN resolvido com sucesso! Dados preenchidos.", "ok");
@@ -155,7 +155,7 @@ export function PedagogicalMaterialForm({
         setAuthor("");
         setIsbn("");
         setSubject("");
-        setPedagogicalLine("");
+        setPedagogicalLineSelect("");
         setObjectives("");
       }
     } finally {

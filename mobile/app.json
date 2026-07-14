@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Pai&Mãe Integrado",
+    "slug": "paimae-integrado",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#667eea"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTabletMode": true,
+      "bundleIdentifier": "com.paimae.integrado"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#667eea"
+      },
+      "package": "com.paimae.integrado"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "paimae",
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#667eea"
+        }
+      ],
+      "expo-router"
+    ],
+    "extra": {
+      "apiUrl": "https://api.yourdomain.com"
+    }
+  }
+}

@@ -140,8 +140,8 @@ export function ParentDashboard() {
                             <p className="text-sm text-gray-600 mb-2">{interaction.message}</p>
                             <p className="text-xs text-green-600 flex items-center gap-1">
                               ✓ Respondida em{" "}
-                              {interaction.created_at
-                                ? new Date(interaction.created_at).toLocaleDateString("pt-BR")
+                              {interaction.sent_at
+                                ? new Date(interaction.sent_at).toLocaleDateString("pt-BR")
                                 : "data desconhecida"}
                             </p>
                           </Card>

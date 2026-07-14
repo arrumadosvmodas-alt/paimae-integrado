@@ -238,7 +238,7 @@ export function ReportGenerator({ childId, childData }: ReportGeneratorProps) {
       {toast && (
         <Toast
           message={toast}
-          type={toast.includes("❌") ? "error" : "success"}
+          type={toast.includes("❌") ? "error" : "ok"}
           onClose={() => setToast(null)}
         />
       )}
