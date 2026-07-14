@@ -1,0 +1,24 @@
+# Backend
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.db
+backend/.env
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/*.egg-info/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Mobile
+mobile/node_modules/
+
+# General
+.git/
+.github/
+*.md
+*.log
+.DS_Store
