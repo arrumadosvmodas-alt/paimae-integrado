@@ -1209,6 +1209,7 @@ function DashboardPage({
                 <SchoolScheduleManager
                   childId={selectedChildId}
                   schoolId={selectedChild?.school_id}
+                  materials={materials}
                   canEdit={canManageSchedule}
                   notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
                 />

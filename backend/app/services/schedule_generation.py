@@ -231,7 +231,7 @@ def _get_or_create_daily_item(
         study_plan_id=study_plan.id,
         date=schedule.date,
         chapter_or_theme=theme,
-        activity_description=f"Atividade baseada no cronograma de {schedule.subject}: {theme}.",
+        activity_description=_build_activity_description(schedule, theme),
         difficulty_level="medium",
         estimated_duration_minutes=30,
         status="pending",

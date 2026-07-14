@@ -80,6 +80,10 @@ export async function createSchoolSchedule(data: {
   date: string;
   subject: string;
   topic?: string | null;
+  material_id?: string | null;
+  chapter?: string | null;
+  page_start?: number | null;
+  page_end?: number | null;
   source?: "manual" | "pdf" | "image" | "ocr" | "fallback";
   source_file_url?: string | null;
   confidence_score?: number | null;
@@ -98,6 +102,10 @@ export async function updateSchoolSchedule(
     date: string;
     subject: string;
     topic?: string | null;
+    material_id?: string | null;
+    chapter?: string | null;
+    page_start?: number | null;
+    page_end?: number | null;
     source?: "manual" | "pdf" | "image" | "ocr" | "fallback";
     source_file_url?: string | null;
     confidence_score?: number | null;

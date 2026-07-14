@@ -122,6 +122,10 @@ class SchoolScheduleCreate(BaseModel):
     date: date
     subject: str = Field(min_length=2, max_length=80)
     topic: str | None = Field(default=None, max_length=180)
+    material_id: UUID | None = None
+    chapter: str | None = Field(default=None, max_length=80)
+    page_start: int | None = Field(default=None, ge=1)
+    page_end: int | None = Field(default=None, ge=1)
     source: str = Field(default="manual", pattern="^(manual|pdf|image|ocr|fallback)$")
     source_file_url: str | None = Field(default=None, max_length=500)
     confidence_score: int | None = Field(default=None, ge=0, le=100)
@@ -135,6 +139,10 @@ class SchoolScheduleRead(Timestamped):
     date: date
     subject: str
     topic: str | None
+    material_id: UUID | None
+    chapter: str | None
+    page_start: int | None
+    page_end: int | None
     source: str
     source_file_url: str | None
     confidence_score: int | None
@@ -147,6 +155,10 @@ class SchoolScheduleUpdate(BaseModel):
     date: date
     subject: str = Field(min_length=2, max_length=80)
     topic: str | None = Field(default=None, max_length=180)
+    material_id: UUID | None = None
+    chapter: str | None = Field(default=None, max_length=80)
+    page_start: int | None = Field(default=None, ge=1)
+    page_end: int | None = Field(default=None, ge=1)
     source: str = Field(default="manual", pattern="^(manual|pdf|image|ocr|fallback)$")
     source_file_url: str | None = Field(default=None, max_length=500)
     confidence_score: int | None = Field(default=None, ge=0, le=100)

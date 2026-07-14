@@ -71,6 +71,10 @@ class SchoolSchedule(IdMixin, TimestampMixin, Base):
     date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     subject: Mapped[str] = mapped_column(String(80), nullable=False)
     topic: Mapped[str | None] = mapped_column(String(180))
+    material_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("pedagogical_materials.id"), index=True)
+    chapter: Mapped[str | None] = mapped_column(String(80))
+    page_start: Mapped[int | None] = mapped_column(Integer)
+    page_end: Mapped[int | None] = mapped_column(Integer)
     source: Mapped[str] = mapped_column(String(20), default="manual")
     source_file_url: Mapped[str | None] = mapped_column(String(500))
     confidence_score: Mapped[int | None] = mapped_column(Integer)
@@ -80,6 +84,7 @@ class SchoolSchedule(IdMixin, TimestampMixin, Base):
 
     child = relationship("Child")
     school = relationship("School")
+    material = relationship("PedagogicalMaterial")
 
 
 class MaterialItem(IdMixin, TimestampMixin, Base):
