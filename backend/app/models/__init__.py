@@ -23,6 +23,26 @@ from app.models.learning import (
     LearningHistory,
     AdaptiveRecommendation,
 )
+from app.models.integration import (
+    Integration,
+    IntegrationSyncLog,
+    WebhookEvent,
+    GoogleClassroomSync,
+    MicrosoftTeamsSync,
+    WhatsAppBusinessSync,
+    WebhookSubscription,
+)
+from app.models.gamification import (
+    Badge,
+    Mission,
+    MissionCompletion,
+    Leaderboard,
+    Achievement,
+    DailyChallenge,
+    DailyChallengeCompletion,
+    Reward,
+    RewardClaim,
+)
 
 __all__ = [
     "AuditLog",
@@ -46,5 +66,21 @@ __all__ = [
     "LearningProfile",
     "LearningHistory",
     "AdaptiveRecommendation",
+    "Integration",
+    "IntegrationSyncLog",
+    "WebhookEvent",
+    "GoogleClassroomSync",
+    "MicrosoftTeamsSync",
+    "WhatsAppBusinessSync",
+    "WebhookSubscription",
+    "Badge",
+    "Mission",
+    "MissionCompletion",
+    "Leaderboard",
+    "Achievement",
+    "DailyChallenge",
+    "DailyChallengeCompletion",
+    "Reward",
+    "RewardClaim",
 ]
 

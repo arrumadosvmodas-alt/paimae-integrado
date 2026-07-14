@@ -14,4 +14,9 @@ class School(IdMixin, TimestampMixin, Base):
 
     children = relationship("Child", back_populates="school")
     users = relationship("User", back_populates="school")
+    integrations = relationship("Integration", back_populates="school", cascade="all, delete-orphan")
+    missions = relationship("Mission", back_populates="school", cascade="all, delete-orphan")
+    leaderboards = relationship("Leaderboard", back_populates="school", cascade="all, delete-orphan")
+    daily_challenges = relationship("DailyChallenge", back_populates="school", cascade="all, delete-orphan")
+    rewards = relationship("Reward", back_populates="school", cascade="all, delete-orphan")
 

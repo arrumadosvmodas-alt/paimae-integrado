@@ -9,6 +9,7 @@ def _bootstrap_admin(client: TestClient) -> str:
             "email": "admin@example.com",
             "password": "strong-password",
             "role": "admin",
+            "document": "52998224725",
         },
     )
     assert response.status_code == 201, response.text

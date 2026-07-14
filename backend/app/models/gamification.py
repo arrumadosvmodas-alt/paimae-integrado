@@ -1,13 +1,17 @@
 """Modelos para gamificação."""
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Float, JSON, Enum
-from sqlalchemy.orm import relationship
 from datetime import datetime
-import enum
-from app.models.base import Base, BaseModel
+from uuid import UUID
+
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base
+from app.models.mixins import IdMixin, TimestampMixin
 
 
-class BadgeType(str, enum.Enum):
-    """Tipos de badges."""
+class BadgeType:
+    """Tipos de badges (valores usados na coluna badge_type)."""
     FIRST_ACTIVITY = "first_activity"
     STREAK_7 = "streak_7"
     STREAK_30 = "streak_30"
@@ -18,220 +22,217 @@ class BadgeType(str, enum.Enum):
     CHAMPION = "champion"
 
 
-class Badge(Base, BaseModel):
+class Badge(IdMixin, TimestampMixin, Base):
     """Badges conquistados por alunos."""
     __tablename__ = "badges"
 
-    child_id = Column(String(36), ForeignKey("children.id"), nullable=False)
-    badge_type = Column(String(50), nullable=False)  # BadgeType
-    title = Column(String(100), nullable=False)
-    description = Column(String(500), nullable=False)
-    icon_emoji = Column(String(10), nullable=False)
+    child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, index=True)
+    badge_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False)
+    icon_emoji: Mapped[str] = mapped_column(String(10), nullable=False)
 
     # Critério de desbloqueio
-    unlock_criteria = Column(JSON, nullable=True)
-    points_awarded = Column(Integer, default=0)
+    unlock_criteria: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    points_awarded: Mapped[int] = mapped_column(Integer, default=0)
 
     # Timestamps
-    unlocked_at = Column(DateTime, default=datetime.utcnow)
-    rarity = Column(String(20), default="common")  # common, rare, epic, legendary
+    unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    rarity: Mapped[str] = mapped_column(String(20), default="common")  # common, rare, epic, legendary
 
     # Relacionamentos
     child = relationship("Child", back_populates="badges")
 
 
-class Mission(Base, BaseModel):
+class Mission(IdMixin, TimestampMixin, Base):
     """Missões (desafios específicos)."""
     __tablename__ = "missions"
 
-    school_id = Column(String(36), ForeignKey("schools.id"), nullable=False)
-    title = Column(String(200), nullable=False)
-    description = Column(String(500), nullable=False)
-    reward_points = Column(Integer, default=0)
-    reward_badge = Column(String(50), nullable=True)
+    school_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("schools.id"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False)
+    reward_points: Mapped[int] = mapped_column(Integer, default=0)
+    reward_badge: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Condições
-    required_activity_count = Column(Integer, default=1)
-    required_score = Column(Float, default=0.0)
-    required_theme = Column(String(100), nullable=True)
-    time_limit_days = Column(Integer, nullable=True)
+    required_activity_count: Mapped[int] = mapped_column(Integer, default=1)
+    required_score: Mapped[float] = mapped_column(Float, default=0.0)
+    required_theme: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    time_limit_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Status
-    is_active = Column(Boolean, default=True)
-    difficulty = Column(String(20), default="normal")  # easy, normal, hard, expert
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    difficulty: Mapped[str] = mapped_column(String(20), default="normal")  # easy, normal, hard, expert
 
     # Relacionamentos
     school = relationship("School", back_populates="missions")
-    completions = relationship("MissionCompletion", back_populates="mission")
+    completions = relationship("MissionCompletion", back_populates="mission", cascade="all, delete-orphan")
 
 
-class MissionCompletion(Base, BaseModel):
+class MissionCompletion(IdMixin, TimestampMixin, Base):
     """Conclusão de missões."""
     __tablename__ = "mission_completions"
 
-    child_id = Column(String(36), ForeignKey("children.id"), nullable=False)
-    mission_id = Column(String(36), ForeignKey("missions.id"), nullable=False)
+    child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, index=True)
+    mission_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("missions.id"), nullable=False, index=True)
 
     # Status
-    progress = Column(Float, default=0.0)  # 0-100%
-    completed = Column(Boolean, default=False)
+    progress: Mapped[float] = mapped_column(Float, default=0.0)  # 0-100%
+    completed: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Timestamps
-    started_at = Column(DateTime, default=datetime.utcnow)
-    completed_at = Column(DateTime, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Recompensas
-    points_earned = Column(Integer, default=0)
-    badge_earned = Column(String(50), nullable=True)
+    points_earned: Mapped[int] = mapped_column(Integer, default=0)
+    badge_earned: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Relacionamentos
     child = relationship("Child", back_populates="mission_completions")
     mission = relationship("Mission", back_populates="completions")
 
 
-class Leaderboard(Base, BaseModel):
+class Leaderboard(IdMixin, TimestampMixin, Base):
     """Ranking de alunos."""
     __tablename__ = "leaderboards"
 
-    school_id = Column(String(36), ForeignKey("schools.id"), nullable=False)
-    child_id = Column(String(36), ForeignKey("children.id"), nullable=False)
+    school_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("schools.id"), nullable=False, index=True)
+    child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, unique=True, index=True)
 
     # Pontuação
-    total_points = Column(Integer, default=0)
-    week_points = Column(Integer, default=0)
-    month_points = Column(Integer, default=0)
+    total_points: Mapped[int] = mapped_column(Integer, default=0)
+    week_points: Mapped[int] = mapped_column(Integer, default=0)
+    month_points: Mapped[int] = mapped_column(Integer, default=0)
 
     # Posições
-    overall_rank = Column(Integer, nullable=True)
-    week_rank = Column(Integer, nullable=True)
-    month_rank = Column(Integer, nullable=True)
+    overall_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    week_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    month_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Streaks
-    current_streak = Column(Integer, default=0)
-    longest_streak = Column(Integer, default=0)
-    last_activity = Column(DateTime, nullable=True)
+    current_streak: Mapped[int] = mapped_column(Integer, default=0)
+    longest_streak: Mapped[int] = mapped_column(Integer, default=0)
+    last_activity: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Badges
-    badge_count = Column(Integer, default=0)
-    epic_badge_count = Column(Integer, default=0)
-    legendary_badge_count = Column(Integer, default=0)
-
-    # Atualizações
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    badge_count: Mapped[int] = mapped_column(Integer, default=0)
+    epic_badge_count: Mapped[int] = mapped_column(Integer, default=0)
+    legendary_badge_count: Mapped[int] = mapped_column(Integer, default=0)
 
     # Relacionamentos
     school = relationship("School", back_populates="leaderboards")
     child = relationship("Child", back_populates="leaderboard")
 
 
-class Achievement(Base, BaseModel):
+class Achievement(IdMixin, TimestampMixin, Base):
     """Achievements (marcos alcançados)."""
     __tablename__ = "achievements"
 
-    child_id = Column(String(36), ForeignKey("children.id"), nullable=False)
-    title = Column(String(200), nullable=False)
-    description = Column(String(500), nullable=False)
-    type = Column(String(50), nullable=False)  # milestone, challenge, discovery
+    child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)  # milestone, challenge, discovery
 
     # Critério
-    criteria = Column(JSON, nullable=False)
+    criteria: Mapped[dict] = mapped_column(JSON, nullable=False)
 
     # Recompensa
-    points_awarded = Column(Integer, default=0)
-    badge_icon = Column(String(10), nullable=False)
+    points_awarded: Mapped[int] = mapped_column(Integer, default=0)
+    badge_icon: Mapped[str] = mapped_column(String(10), nullable=False)
 
     # Timestamp
-    unlocked_at = Column(DateTime, default=datetime.utcnow)
-    is_secret = Column(Boolean, default=False)  # Surprise achievements
+    unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    is_secret: Mapped[bool] = mapped_column(Boolean, default=False)  # Surprise achievements
 
     # Relacionamentos
     child = relationship("Child", back_populates="achievements")
 
 
-class DailyChallenge(Base, BaseModel):
+class DailyChallenge(IdMixin, TimestampMixin, Base):
     """Desafios diários."""
     __tablename__ = "daily_challenges"
 
-    school_id = Column(String(36), ForeignKey("schools.id"), nullable=False)
-    date = Column(DateTime, nullable=False)
+    school_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("schools.id"), nullable=False, index=True)
+    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
 
     # Challenge details
-    title = Column(String(200), nullable=False)
-    description = Column(String(500), nullable=False)
-    challenge_type = Column(String(50), nullable=False)  # activity, quiz, interaction
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False)
+    challenge_type: Mapped[str] = mapped_column(String(50), nullable=False)  # activity, quiz, interaction
 
     # Criteria
-    required_theme = Column(String(100), nullable=True)
-    required_count = Column(Integer, default=1)
-    required_score = Column(Float, default=0.0)
+    required_theme: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    required_count: Mapped[int] = mapped_column(Integer, default=1)
+    required_score: Mapped[float] = mapped_column(Float, default=0.0)
 
     # Reward
-    bonus_points = Column(Integer, default=10)
-    reward_badge = Column(String(50), nullable=True)
+    bonus_points: Mapped[int] = mapped_column(Integer, default=10)
+    reward_badge: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Status
-    is_active = Column(Boolean, default=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relacionamentos
     school = relationship("School", back_populates="daily_challenges")
-    completions = relationship("DailyChallengeCompletion", back_populates="challenge")
+    completions = relationship("DailyChallengeCompletion", back_populates="challenge", cascade="all, delete-orphan")
 
 
-class DailyChallengeCompletion(Base, BaseModel):
+class DailyChallengeCompletion(IdMixin, TimestampMixin, Base):
     """Conclusão de desafios diários."""
     __tablename__ = "daily_challenge_completions"
 
-    child_id = Column(String(36), ForeignKey("children.id"), nullable=False)
-    challenge_id = Column(String(36), ForeignKey("daily_challenges.id"), nullable=False)
+    child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, index=True)
+    challenge_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("daily_challenges.id"), nullable=False, index=True)
 
-    completed = Column(Boolean, default=False)
-    completed_at = Column(DateTime, nullable=True)
-    points_earned = Column(Integer, default=0)
-    badge_earned = Column(String(50), nullable=True)
+    completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    points_earned: Mapped[int] = mapped_column(Integer, default=0)
+    badge_earned: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Relacionamentos
     child = relationship("Child", back_populates="daily_challenge_completions")
     challenge = relationship("DailyChallenge", back_populates="completions")
 
 
-class Reward(Base, BaseModel):
+class Reward(IdMixin, TimestampMixin, Base):
     """Recompensas desbloqueáveis."""
     __tablename__ = "rewards"
 
-    school_id = Column(String(36), ForeignKey("schools.id"), nullable=False)
-    title = Column(String(200), nullable=False)
-    description = Column(String(500), nullable=False)
-    icon = Column(String(10), nullable=False)
+    school_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("schools.id"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False)
+    icon: Mapped[str] = mapped_column(String(10), nullable=False)
 
     # Custo em pontos
-    cost_points = Column(Integer, nullable=False)
+    cost_points: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Tipo de recompensa
-    reward_type = Column(String(50), nullable=False)  # certificate, badge, privilege, discount
+    reward_type: Mapped[str] = mapped_column(String(50), nullable=False)  # certificate, badge, privilege, discount
 
     # Recompensa específica
-    reward_data = Column(JSON, nullable=True)
+    reward_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Status
-    is_active = Column(Boolean, default=True)
-    available_count = Column(Integer, nullable=True)  # None = ilimitado
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    available_count: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None = ilimitado
 
     # Relacionamentos
     school = relationship("School", back_populates="rewards")
-    claims = relationship("RewardClaim", back_populates="reward")
+    claims = relationship("RewardClaim", back_populates="reward", cascade="all, delete-orphan")
 
 
-class RewardClaim(Base, BaseModel):
+class RewardClaim(IdMixin, TimestampMixin, Base):
     """Recompensas reclamadas por alunos."""
     __tablename__ = "reward_claims"
 
-    child_id = Column(String(36), ForeignKey("children.id"), nullable=False)
-    reward_id = Column(String(36), ForeignKey("rewards.id"), nullable=False)
+    child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, index=True)
+    reward_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("rewards.id"), nullable=False, index=True)
 
-    points_spent = Column(Integer, nullable=False)
-    claimed_at = Column(DateTime, default=datetime.utcnow)
-    delivered = Column(Boolean, default=False)
-    delivered_at = Column(DateTime, nullable=True)
+    points_spent: Mapped[int] = mapped_column(Integer, nullable=False)
+    claimed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    delivered: Mapped[bool] = mapped_column(Boolean, default=False)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relacionamentos
     child = relationship("Child", back_populates="reward_claims")

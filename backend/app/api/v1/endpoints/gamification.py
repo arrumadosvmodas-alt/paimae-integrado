@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from uuid import UUID
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
@@ -28,7 +29,7 @@ router = APIRouter(prefix="/gamification", tags=["gamification"])
 
 @router.get("/badges", response_model=List[BadgeResponse])
 async def get_badges(
-    child_id: str = None,
+    child_id: UUID | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -111,7 +112,7 @@ async def get_daily_challenges(
 
 @router.get("/stats")
 async def get_gamification_stats(
-    child_id: str = None,
+    child_id: UUID | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -159,7 +160,7 @@ async def get_rewards(
 
 @router.post("/rewards/{reward_id}/claim", response_model=RewardClaimResponse)
 async def claim_reward(
-    reward_id: str,
+    reward_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -178,7 +179,7 @@ async def claim_reward(
 
 @router.get("/achievements", response_model=List[dict])
 async def get_achievements(
-    child_id: str = None,
+    child_id: UUID | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

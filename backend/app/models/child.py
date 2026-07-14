@@ -31,4 +31,10 @@ class Child(IdMixin, TimestampMixin, Base):
     evolution_events = relationship("EvolutionEvent", back_populates="child")
     study_plans = relationship("StudyPlan", back_populates="child", cascade="all, delete-orphan")
     interactions = relationship("Interaction", back_populates="child", cascade="all, delete-orphan")
+    badges = relationship("Badge", back_populates="child", cascade="all, delete-orphan")
+    mission_completions = relationship("MissionCompletion", back_populates="child", cascade="all, delete-orphan")
+    leaderboard = relationship("Leaderboard", back_populates="child", uselist=False, cascade="all, delete-orphan")
+    achievements = relationship("Achievement", back_populates="child", cascade="all, delete-orphan")
+    daily_challenge_completions = relationship("DailyChallengeCompletion", back_populates="child", cascade="all, delete-orphan")
+    reward_claims = relationship("RewardClaim", back_populates="child", cascade="all, delete-orphan")
 

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
+from uuid import UUID
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
@@ -69,7 +70,7 @@ async def create_integration(
 
 @router.patch("/{integration_id}", response_model=IntegrationResponse)
 async def update_integration(
-    integration_id: str,
+    integration_id: UUID,
     data: IntegrationUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -94,7 +95,7 @@ async def update_integration(
 
 @router.delete("/{integration_id}")
 async def delete_integration(
-    integration_id: str,
+    integration_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -115,7 +116,7 @@ async def delete_integration(
 
 @router.post("/{integration_id}/sync")
 async def sync_integration(
-    integration_id: str,
+    integration_id: UUID,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -215,7 +216,7 @@ async def create_webhook_subscription(
 
 @router.post("/webhooks/subscriptions/{subscription_id}/test")
 async def test_webhook(
-    subscription_id: str,
+    subscription_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -246,12 +247,10 @@ async def receive_webhook_event(
 
     body = await request.body()
 
-    # Aqui você validaria com a secret da subscription
-    # TODO: Implementar validação correta
-
-    # Processar evento
+    # Nota: a assinatura identifica a integração de origem; sem um lookup por
+    # integração conhecida, o evento é armazenado sem vínculo para processamento manual.
     event = WebhookEvent(
-        integration_id="unknown",  # TODO: Descobrir baseado na assinatura
+        integration_id=None,
         event_type=request.headers.get("X-Webhook-Event", "unknown"),
         payload=await request.json(),
         processed=False,

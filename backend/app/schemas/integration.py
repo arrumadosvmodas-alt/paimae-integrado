@@ -2,6 +2,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from uuid import UUID
 
 
 class IntegrationBase(BaseModel):
@@ -12,7 +13,7 @@ class IntegrationBase(BaseModel):
     credentials: Optional[Dict[str, Any]] = None
     config: Optional[Dict[str, Any]] = None
     sync_enabled: bool = False
-    sync_interval_minutes: str = "60"
+    sync_interval_minutes: int = 60
 
 
 class IntegrationCreate(IntegrationBase):
@@ -29,14 +30,14 @@ class IntegrationUpdate(BaseModel):
     config: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
     sync_enabled: Optional[bool] = None
-    sync_interval_minutes: Optional[str] = None
+    sync_interval_minutes: Optional[int] = None
 
 
 class IntegrationResponse(IntegrationBase):
     """Resposta de integração."""
 
-    id: str
-    school_id: str
+    id: UUID
+    school_id: UUID
     is_active: bool
     webhook_url: Optional[str] = None
     last_sync: Optional[datetime] = None
@@ -77,11 +78,11 @@ class WebhookSubscriptionUpdate(BaseModel):
 class WebhookSubscriptionResponse(WebhookSubscriptionBase):
     """Resposta de inscrição."""
 
-    id: str
-    school_id: str
+    id: UUID
+    school_id: UUID
     active: bool
-    total_delivered: str
-    total_failed: str
+    total_delivered: int
+    total_failed: int
     last_delivery: Optional[datetime] = None
     created_at: datetime
 
@@ -116,7 +117,7 @@ class WhatsAppBusinessSyncCreate(BaseModel):
     """Sincronizar WhatsApp Business."""
 
     phone_number: str
-    guardian_id: Optional[str] = None
+    guardian_id: Optional[UUID] = None
     send_notifications: bool = True
     send_grades: bool = False
     send_assignments: bool = True
@@ -132,8 +133,8 @@ class WebhookEventBase(BaseModel):
 class WebhookEventResponse(WebhookEventBase):
     """Resposta de evento."""
 
-    id: str
-    integration_id: str
+    id: UUID
+    integration_id: Optional[UUID] = None
     processed: bool
     error: Optional[str] = None
     received_at: datetime
@@ -146,10 +147,10 @@ class WebhookEventResponse(WebhookEventBase):
 class IntegrationSyncLogResponse(BaseModel):
     """Resposta de log de sincronização."""
 
-    id: str
-    integration_id: str
+    id: UUID
+    integration_id: UUID
     status: str  # success, error, partial
-    records_synced: str
+    records_synced: int
     error_message: Optional[str] = None
     started_at: datetime
     completed_at: Optional[datetime] = None

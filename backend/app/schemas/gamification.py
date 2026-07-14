@@ -2,13 +2,14 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from uuid import UUID
 
 
 class BadgeResponse(BaseModel):
     """Response de badge."""
 
-    id: str
-    child_id: str
+    id: UUID
+    child_id: UUID
     badge_type: str
     title: str
     description: str
@@ -43,8 +44,8 @@ class MissionCreate(MissionBase):
 class MissionResponse(MissionBase):
     """Response de missão."""
 
-    id: str
-    school_id: str
+    id: UUID
+    school_id: UUID
     is_active: bool
     reward_badge: Optional[str] = None
     created_at: datetime
@@ -57,7 +58,7 @@ class LeaderboardResponse(BaseModel):
     """Response de leaderboard."""
 
     position: int
-    child_id: str
+    child_id: UUID
     total_points: int
     week_points: int
     month_points: int
@@ -71,7 +72,7 @@ class LeaderboardResponse(BaseModel):
 class DailyChallengeResponse(BaseModel):
     """Response de desafio diário."""
 
-    id: str
+    id: UUID
     title: str
     description: str
     challenge_type: str
@@ -107,8 +108,8 @@ class RewardCreate(RewardBase):
 class RewardResponse(RewardBase):
     """Response de recompensa."""
 
-    id: str
-    school_id: str
+    id: UUID
+    school_id: UUID
     is_active: bool
     available_count: Optional[int] = None
     reward_data: Optional[Dict[str, Any]] = None
@@ -121,9 +122,9 @@ class RewardResponse(RewardBase):
 class RewardClaimResponse(BaseModel):
     """Response de recompensa reivindicada."""
 
-    id: str
-    child_id: str
-    reward_id: str
+    id: UUID
+    child_id: UUID
+    reward_id: UUID
     points_spent: int
     claimed_at: datetime
     delivered: bool
