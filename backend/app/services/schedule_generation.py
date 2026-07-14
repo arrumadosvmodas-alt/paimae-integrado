@@ -290,3 +290,12 @@ def _get_or_create_schedule_interaction(
     db.add(interaction)
     db.flush()
     return interaction
+
+def _build_activity_description(schedule: SchoolSchedule, theme: str) -> str:
+    page_part = ""
+    if schedule.page_start and schedule.page_end:
+        page_part = f" Paginas {schedule.page_start} a {schedule.page_end}."
+    elif schedule.page_start:
+        page_part = f" Pagina {schedule.page_start}."
+    chapter_part = f" Capitulo: {schedule.chapter}." if schedule.chapter else ""
+    return f"Atividade baseada no cronograma de {schedule.subject}: {theme}.{chapter_part}{page_part}"
