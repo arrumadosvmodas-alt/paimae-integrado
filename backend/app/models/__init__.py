@@ -18,6 +18,11 @@ from app.models.pedagogy import (
     Interaction,
     InteractionResponse,
 )
+from app.models.learning import (
+    LearningProfile,
+    LearningHistory,
+    AdaptiveRecommendation,
+)
 
 __all__ = [
     "AuditLog",
@@ -38,5 +43,8 @@ __all__ = [
     "DailyStudyPlanItem",
     "Interaction",
     "InteractionResponse",
+    "LearningProfile",
+    "LearningHistory",
+    "AdaptiveRecommendation",
 ]
 
