@@ -51,6 +51,7 @@ class PedagogicalMaterialCreate(BaseModel):
     pedagogical_line: str = Field(min_length=2, max_length=100)
     objectives: str | None = None
     family_orientation: str | None = None
+    file_url: str | None = Field(default=None, max_length=500)
     items: list[MaterialItemCreate] | None = None
 
 
@@ -63,6 +64,11 @@ class PedagogicalMaterialRead(Timestamped):
     pedagogical_line: str
     objectives: str | None
     family_orientation: str | None
+    file_url: str | None
+    extracted_text: str | None
+    ai_analysis: dict | None
+    processing_status: str
+    processing_error: str | None
     items: list[MaterialItemRead]
     is_active: bool
 
@@ -75,6 +81,7 @@ class PedagogicalMaterialUpdate(BaseModel):
     pedagogical_line: str = Field(min_length=2, max_length=100)
     objectives: str | None = None
     family_orientation: str | None = None
+    file_url: str | None = Field(default=None, max_length=500)
     items: list[MaterialItemCreate] | None = None
 
 

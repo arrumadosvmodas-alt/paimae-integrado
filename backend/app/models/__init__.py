@@ -13,6 +13,10 @@ from app.models.pedagogy import (
     MaterialItem,
     DailySchoolRecord,
     FamilyInteractionSuggestion,
+    StudyPlan,
+    DailyStudyPlanItem,
+    Interaction,
+    InteractionResponse,
 )
 
 __all__ = [
@@ -30,5 +34,9 @@ __all__ = [
     "MaterialItem",
     "DailySchoolRecord",
     "FamilyInteractionSuggestion",
+    "StudyPlan",
+    "DailyStudyPlanItem",
+    "Interaction",
+    "InteractionResponse",
 ]
 
