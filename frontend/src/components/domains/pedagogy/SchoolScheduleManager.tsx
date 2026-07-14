@@ -1,0 +1,250 @@
+import { useEffect, useMemo, useState } from "react";
+import { CalendarDays, Play, RefreshCw } from "lucide-react";
+
+import { Button } from "../../ui/Button";
+import { Card } from "../../ui/Card";
+import { Input, Select, Textarea } from "../../ui/Input";
+import {
+  createSchoolSchedule,
+  generateScheduleActivities,
+  getSchoolSchedules,
+  updateSchoolSchedule,
+} from "../../../services/apiServices";
+import type { SchoolSchedule } from "../../../lib/types";
+
+type Notify = (msg: string, type?: "ok" | "error" | "info") => void;
+
+interface SchoolScheduleManagerProps {
+  childId: string;
+  schoolId?: string;
+  canEdit: boolean;
+  notify: Notify;
+}
+
+const emptyForm = {
+  date: new Date().toISOString().slice(0, 10),
+  subject: "",
+  topic: "",
+  source: "manual" as SchoolSchedule["source"],
+  source_file_url: "",
+  status: "planned" as SchoolSchedule["status"],
+};
+
+export function SchoolScheduleManager({ childId, schoolId, canEdit, notify }: SchoolScheduleManagerProps) {
+  const [schedules, setSchedules] = useState<SchoolSchedule[]>([]);
+  const [form, setForm] = useState(emptyForm);
+  const [editing, setEditing] = useState<SchoolSchedule | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+
+  const sortedSchedules = useMemo(
+    () => [...schedules].sort((a, b) => a.date.localeCompare(b.date)),
+    [schedules]
+  );
+
+  async function loadSchedules() {
+    if (!childId) return;
+    setLoading(true);
+    try {
+      setSchedules(await getSchoolSchedules(childId));
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Erro ao carregar cronograma.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadSchedules();
+  }, [childId]);
+
+  function startEdit(schedule: SchoolSchedule) {
+    setEditing(schedule);
+    setForm({
+      date: schedule.date,
+      subject: schedule.subject,
+      topic: schedule.topic || "",
+      source: schedule.source,
+      source_file_url: schedule.source_file_url || "",
+      status: schedule.status,
+    });
+  }
+
+  function resetForm() {
+    setEditing(null);
+    setForm(emptyForm);
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!childId || !schoolId) {
+      notify("Selecione uma crianca vinculada a escola antes de cadastrar o cronograma.", "error");
+      return;
+    }
+    if (!form.subject.trim()) {
+      notify("Informe a disciplina do cronograma.", "error");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        child_id: childId,
+        school_id: schoolId,
+        date: form.date,
+        subject: form.subject.trim(),
+        topic: form.topic.trim() || null,
+        source: form.source,
+        source_file_url: form.source_file_url.trim() || null,
+        confidence_score: form.source === "manual" ? 100 : null,
+        fallback_used: false,
+        status: form.status,
+      };
+
+      if (editing) {
+        await updateSchoolSchedule(editing.id, payload);
+        notify("Cronograma atualizado.");
+      } else {
+        await createSchoolSchedule(payload);
+        notify("Cronograma cadastrado.");
+      }
+      resetForm();
+      await loadSchedules();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Erro ao salvar cronograma.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleGenerate(schedule: SchoolSchedule) {
+    setGeneratingId(schedule.id);
+    try {
+      const result = await generateScheduleActivities(schedule.id);
+      notify(result.fallback_used ? "Atividades geradas com material de apoio/fallback." : "Atividades geradas pelo cronograma.");
+      await loadSchedules();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Erro ao gerar atividades do cronograma.", "error");
+    } finally {
+      setGeneratingId(null);
+    }
+  }
+
+  return (
+    <Card
+      title="Cronograma Pedagogico"
+      subtitle="Base para gerar interacoes e atividades diarias"
+      icon={<CalendarDays className="w-5 h-5 text-primary" />}
+      headerActions={
+        <Button variant="ghost" size="sm" onClick={loadSchedules} disabled={!childId || loading} title="Atualizar">
+          <RefreshCw className="w-4 h-4" />
+        </Button>
+      }
+    >
+      {canEdit && (
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+          <Input
+            label="Data"
+            type="date"
+            value={form.date}
+            onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))}
+          />
+          <Input
+            label="Disciplina"
+            placeholder="Ex.: Matematica"
+            value={form.subject}
+            onChange={(event) => setForm((current) => ({ ...current, subject: event.target.value }))}
+          />
+          <div className="md:col-span-2">
+            <Textarea
+              label="Tema / Conteudo"
+              placeholder="Ex.: Multiplicacao por 2 e 3, leitura do capitulo 4..."
+              value={form.topic}
+              onChange={(event) => setForm((current) => ({ ...current, topic: event.target.value }))}
+              rows={3}
+            />
+          </div>
+          <Select
+            label="Origem"
+            value={form.source}
+            onChange={(event) => setForm((current) => ({ ...current, source: event.target.value as SchoolSchedule["source"] }))}
+          >
+            <option value="manual">Manual</option>
+            <option value="pdf">PDF enviado</option>
+            <option value="image">Imagem enviada</option>
+            <option value="ocr">OCR / IA</option>
+            <option value="fallback">Fallback</option>
+          </Select>
+          <Select
+            label="Status"
+            value={form.status}
+            onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as SchoolSchedule["status"] }))}
+          >
+            <option value="planned">Planejado</option>
+            <option value="confirmed">Confirmado</option>
+            <option value="completed">Concluido</option>
+            <option value="skipped">Ignorado</option>
+          </Select>
+          <div className="md:col-span-2">
+            <Input
+              label="Arquivo / Link de origem"
+              placeholder="URL do PDF, imagem ou documento enviado pela escola"
+              value={form.source_file_url}
+              onChange={(event) => setForm((current) => ({ ...current, source_file_url: event.target.value }))}
+            />
+          </div>
+          <div className="md:col-span-2 flex flex-wrap gap-2 justify-end">
+            {editing && (
+              <Button type="button" variant="outline" onClick={resetForm}>
+                Cancelar
+              </Button>
+            )}
+            <Button type="submit" isLoading={saving} disabled={!childId || !schoolId}>
+              {editing ? "Salvar Cronograma" : "Adicionar Cronograma"}
+            </Button>
+          </div>
+        </form>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {loading && <p className="text-sm text-text-muted">Carregando cronograma...</p>}
+        {!loading && sortedSchedules.length === 0 && (
+          <p className="text-sm text-text-muted">Nenhum cronograma cadastrado para a crianca selecionada.</p>
+        )}
+        {sortedSchedules.map((schedule) => (
+          <div key={schedule.id} className="border border-border rounded-lg p-3 bg-background/45 flex flex-col gap-3">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-black text-text-primary">{schedule.date}</span>
+                  <span className="text-xs font-bold px-2 py-1 rounded bg-primary/10 text-primary">{schedule.subject}</span>
+                  <span className="text-xs font-bold px-2 py-1 rounded bg-surface border border-border text-text-muted">{schedule.status}</span>
+                  {schedule.fallback_used && <span className="text-xs font-bold px-2 py-1 rounded bg-warning/10 text-warning">fallback</span>}
+                </div>
+                <p className="text-sm text-text-primary mt-2 break-words">{schedule.topic || "Sem tema informado"}</p>
+                <p className="text-xs text-text-muted mt-1">Origem: {schedule.source}{schedule.source_file_url ? ` - ${schedule.source_file_url}` : ""}</p>
+              </div>
+              <div className="flex flex-wrap gap-2 md:justify-end">
+                {canEdit && (
+                  <Button variant="outline" size="sm" type="button" onClick={() => startEdit(schedule)}>
+                    Editar
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={() => handleGenerate(schedule)}
+                  isLoading={generatingId === schedule.id}
+                >
+                  <Play className="w-4 h-4" /> Gerar
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}

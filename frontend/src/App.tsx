@@ -40,6 +40,7 @@ import { DailyRecordForm } from "./components/domains/pedagogy/DailyRecordForm";
 import { DailyRecordList } from "./components/domains/pedagogy/DailyRecordList";
 import { FamilyInteractions } from "./components/domains/pedagogy/FamilyInteractions";
 import { PedagogicalMethodologyForm } from "./components/domains/pedagogy/PedagogicalMethodologyForm";
+import { SchoolScheduleManager } from "./components/domains/pedagogy/SchoolScheduleManager";
 
 // Páginas Fase F
 import { TeacherDashboard } from "./pages/TeacherDashboard";
@@ -724,6 +725,7 @@ function DashboardPage({
   const showSchoolCreate = user?.role === "admin";
   const showChildCreate = user?.role === "admin" || user?.role === "school_admin" || user?.role === "teacher";
   const showPedagogyCreate = user?.role === "admin" || user?.role === "school_admin" || user?.role === "teacher";
+  const canManageSchedule = showPedagogyCreate || user?.role === "guardian";
   const selectedChild = childrenList.find((c) => c.id === selectedChildId);
 
   const sidebarContent = (
@@ -1202,6 +1204,17 @@ function DashboardPage({
               <GraduationCap className="w-5 h-5 text-primary" /> Módulo Pedagógico Integrado
             </h3>
             
+            {selectedChildId && (
+              <div className="mb-6">
+                <SchoolScheduleManager
+                  childId={selectedChildId}
+                  schoolId={selectedChild?.school_id}
+                  canEdit={canManageSchedule}
+                  notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
+                />
+              </div>
+            )}
+
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               {showPedagogyCreate && (
                 <div className="xl:col-span-1">

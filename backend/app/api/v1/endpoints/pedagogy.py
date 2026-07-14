@@ -579,8 +579,9 @@ def create_school_schedule(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
-    ensure_school_staff(current_user)
     child = ensure_child_access(db, current_user, payload.child_id)
+    if current_user.role != "guardian":
+        ensure_school_staff(current_user)
     if str(child.school_id) != str(payload.school_id):
         raise HTTPException(status_code=400, detail="Crianca nao pertence a escola informada.")
 
@@ -613,11 +614,12 @@ def update_school_schedule(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
-    ensure_school_staff(current_user)
     schedule = db.get(SchoolSchedule, schedule_id)
     if not schedule:
         raise HTTPException(status_code=404, detail="Cronograma escolar nao encontrado.")
     child = ensure_child_access(db, current_user, schedule.child_id)
+    if current_user.role != "guardian":
+        ensure_school_staff(current_user)
 
     for key, value in payload.model_dump().items():
         setattr(schedule, key, value)

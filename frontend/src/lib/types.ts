@@ -121,6 +121,32 @@ export type PedagogicalMaterialWithProcessing = PedagogicalMaterial & {
   processing_error?: string;
 };
 
+
+export type SchoolSchedule = {
+  id: string;
+  child_id: string;
+  school_id: string;
+  date: string;
+  subject: string;
+  topic: string | null;
+  source: "manual" | "pdf" | "image" | "ocr" | "fallback";
+  source_file_url: string | null;
+  confidence_score: number | null;
+  fallback_used: boolean;
+  status: "planned" | "confirmed" | "completed" | "skipped";
+  is_active: boolean;
+};
+
+export type ScheduleGenerationResult = {
+  status: string;
+  message: string;
+  schedule_id: string | null;
+  daily_item_id: string | null;
+  child_interaction_id: string | null;
+  parent_interaction_id: string | null;
+  material_id: string | null;
+  fallback_used: boolean;
+};
 // ===== FASE C: Orquestração =====
 export type StudyPlan = {
   id: string;

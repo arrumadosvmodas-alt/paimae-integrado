@@ -16,6 +16,7 @@ from app.models.notification import Notification
 from app.db.session import SessionLocal
 from app.services.notifications_service import NotificationService
 from app.services.llm import get_llm_service
+from app.services.schedule_generation import generate_daily_activities_for_date
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +150,10 @@ def job_generate_daily_study_items():
         today = datetime.now(ZoneInfo(settings.app_timezone)).date()
         tomorrow = today + timedelta(days=1)
 
+        schedule_results = generate_daily_activities_for_date(db, tomorrow)
+        schedule_created = len([item for item in schedule_results if item.get("status") == "success"])
+        logger.info(f"Cronogramas processados para {tomorrow}: {schedule_created}/{len(schedule_results)}")
+
         # Buscar planos ativos
         study_plans = db.scalars(
             select(StudyPlan)
@@ -224,7 +229,7 @@ def job_generate_daily_study_items():
                 continue
 
         db.commit()
-        logger.info(f"✅ Job concluído: {items_created} itens de estudo gerados")
+        logger.info(f"Job concluido: {items_created} itens de estudo gerados por planos e {schedule_created} por cronogramas")
 
     except Exception as e:
         logger.error(f"❌ Erro no job_generate_daily_study_items: {str(e)}")

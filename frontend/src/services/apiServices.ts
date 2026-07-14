@@ -9,6 +9,8 @@ import type {
   AdaptiveRecommendation,
   LearningMetrics,
   PedagogicalMaterialWithProcessing,
+  SchoolSchedule,
+  ScheduleGenerationResult,
 } from "../lib/types";
 
 // ===== FASE B: Material Processing =====
@@ -65,6 +67,55 @@ export async function generateInteraction(
   );
 }
 
+
+// ===== CRONOGRAMA PEDAGOGICO =====
+
+export async function getSchoolSchedules(childId: string): Promise<SchoolSchedule[]> {
+  return api(`/api/v1/pedagogy/school-schedules?child_id=${childId}`);
+}
+
+export async function createSchoolSchedule(data: {
+  child_id: string;
+  school_id: string;
+  date: string;
+  subject: string;
+  topic?: string | null;
+  source?: "manual" | "pdf" | "image" | "ocr" | "fallback";
+  source_file_url?: string | null;
+  confidence_score?: number | null;
+  fallback_used?: boolean;
+  status?: "planned" | "confirmed" | "completed" | "skipped";
+}): Promise<SchoolSchedule> {
+  return api("/api/v1/pedagogy/school-schedules", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateSchoolSchedule(
+  scheduleId: string,
+  data: {
+    date: string;
+    subject: string;
+    topic?: string | null;
+    source?: "manual" | "pdf" | "image" | "ocr" | "fallback";
+    source_file_url?: string | null;
+    confidence_score?: number | null;
+    fallback_used?: boolean;
+    status?: "planned" | "confirmed" | "completed" | "skipped";
+  }
+): Promise<SchoolSchedule> {
+  return api(`/api/v1/pedagogy/school-schedules/${scheduleId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function generateScheduleActivities(scheduleId: string): Promise<ScheduleGenerationResult> {
+  return api(`/api/v1/orchestration/school-schedules/${scheduleId}/generate-daily-activities`, {
+    method: "POST",
+  });
+}
 // ===== FASE C: Orquestração =====
 
 export async function createStudyPlan(data: {

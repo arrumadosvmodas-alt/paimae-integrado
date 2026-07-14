@@ -10,13 +10,14 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.child import Child
-from app.models.pedagogy import StudyPlan, Interaction, InteractionResponse, DailyStudyPlanItem
+from app.models.pedagogy import StudyPlan, Interaction, InteractionResponse, DailyStudyPlanItem, SchoolSchedule
 from app.models.user import User
 from app.schemas.study_plan import InteractionRead, InteractionResponseRead
 from app.services.audit import record_audit
-from app.services.permissions import ensure_child_access, ensure_school_access
+from app.services.permissions import ensure_child_access
 from app.services.scheduler import manually_dispatch_interaction
 from app.services.llm import get_llm_service
+from app.services.schedule_generation import generate_daily_activity_from_schedule
 from app.core.config import settings
 from pydantic import BaseModel
 
@@ -58,6 +59,55 @@ class EvaluateResponseResponse(BaseModel):
     ai_evaluation: str | None = None
     score: int | None = None
 
+class ScheduleGenerationResponse(BaseModel):
+    status: str
+    message: str
+    schedule_id: UUID | None = None
+    daily_item_id: UUID | None = None
+    child_interaction_id: UUID | None = None
+    parent_interaction_id: UUID | None = None
+    material_id: UUID | None = None
+    fallback_used: bool = False
+
+# --- GERACAO A PARTIR DO CRONOGRAMA ---
+
+@router.post("/school-schedules/{schedule_id}/generate-daily-activities", response_model=ScheduleGenerationResponse)
+def generate_schedule_daily_activities(
+    schedule_id: UUID,
+    db: Annotated[Session, Depends(get_db)] = None,
+    current_user: Annotated[User, Depends(get_current_user)] = None,
+):
+    schedule = db.get(SchoolSchedule, schedule_id)
+    if not schedule:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cronograma nao encontrado")
+
+    child = ensure_child_access(db, current_user, schedule.child_id)
+
+    result = generate_daily_activity_from_schedule(db, schedule_id)
+    if result["status"] == "error":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["message"])
+
+    record_audit(
+        db,
+        actor=current_user,
+        action="school_schedule.generate_daily_activities",
+        entity_type="school_schedule",
+        entity_id=schedule.id,
+        school_id=child.school_id,
+        payload={"fallback_used": result.get("fallback_used", False)},
+    )
+    db.commit()
+
+    return ScheduleGenerationResponse(
+        status=result["status"],
+        message=result["message"],
+        schedule_id=schedule_id,
+        daily_item_id=UUID(result["daily_item_id"]),
+        child_interaction_id=UUID(result["child_interaction_id"]),
+        parent_interaction_id=UUID(result["parent_interaction_id"]),
+        material_id=UUID(result["material_id"]) if result.get("material_id") else None,
+        fallback_used=result.get("fallback_used", False),
+    )
 
 # --- ATIVAÇÃO DE PLANOS ---
 
