@@ -46,6 +46,9 @@ import { TeacherDashboard } from "./pages/TeacherDashboard";
 import { ParentDashboard } from "./pages/ParentDashboard";
 import { ChildInterface } from "./pages/ChildInterface";
 
+// Página Fase G
+import { AnalyticsDashboard } from "./pages/AnalyticsDashboard";
+
 export function App() {
   return (
     <ThemeProvider>
@@ -309,6 +312,10 @@ function AppRoutes() {
         <Route
           path="/child-interface"
           element={!token ? <Navigate to="/login" replace /> : <ChildInterface />}
+        />
+        <Route
+          path="/analytics"
+          element={!token ? <Navigate to="/login" replace /> : <AnalyticsDashboard />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
