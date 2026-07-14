@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import ai, audit, auth, children, guardians, notifications, routines, schools, tasks, evolution, pedagogy, reports, study_plan, material_processing, orchestration, adaptive_learning
+from app.api.v1.endpoints import ai, audit, auth, children, guardians, notifications, routines, schools, tasks, evolution, pedagogy, reports, study_plan, material_processing, orchestration, adaptive_learning, gamification
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -19,4 +19,5 @@ api_router.include_router(material_processing.router, prefix="/materials", tags=
 api_router.include_router(orchestration.router, prefix="/orchestration", tags=["orchestration"])
 api_router.include_router(adaptive_learning.router, prefix="/learning", tags=["adaptive-learning"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
+api_router.include_router(gamification.router, prefix="/gamification", tags=["gamification"])
 
