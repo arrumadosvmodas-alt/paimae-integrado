@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { Bell, BookOpen, ClipboardList, GraduationCap, Sparkles, UserPlus, School as SchoolIcon, LayoutDashboard, ChevronDown, ChevronUp, Users } from "lucide-react";
+import { Bell, BookOpen, ClipboardList, GraduationCap, Sparkles, UserPlus, School as SchoolIcon, LayoutDashboard, ChevronDown, ChevronUp, Users, Bookmark, Shield, Download } from "lucide-react";
 
 import { api, getToken, login, setToken } from "./lib/api";
 import type { Child, EvolutionEvent, Notification, Routine, School, Task, User, DailySchoolRecord, PedagogicalMaterial, PedagogicalMethodology } from "./lib/types";
@@ -32,11 +32,19 @@ import { EvolutionSummary } from "./components/domains/evolution/EvolutionSummar
 
 // Módulo Pedagógico
 import { PedagogicalMaterialForm } from "./components/domains/pedagogy/PedagogicalMaterialForm";
+import { PedagogicalMaterialItemForm } from "./components/domains/pedagogy/PedagogicalMaterialItemForm";
 import { PedagogicalMaterialList } from "./components/domains/pedagogy/PedagogicalMaterialList";
+import { MetricsDashboard } from "./components/domains/pedagogy/MetricsDashboard";
+import { LgpdConsentModal } from "./components/ui/LgpdConsentModal";
 import { DailyRecordForm } from "./components/domains/pedagogy/DailyRecordForm";
 import { DailyRecordList } from "./components/domains/pedagogy/DailyRecordList";
 import { FamilyInteractions } from "./components/domains/pedagogy/FamilyInteractions";
 import { PedagogicalMethodologyForm } from "./components/domains/pedagogy/PedagogicalMethodologyForm";
+
+// Páginas Fase F
+import { TeacherDashboard } from "./pages/TeacherDashboard";
+import { ParentDashboard } from "./pages/ParentDashboard";
+import { ChildInterface } from "./pages/ChildInterface";
 
 export function App() {
   return (
@@ -100,6 +108,7 @@ function AppRoutes() {
       await loadChildData(nextChildId);
     } catch (error) {
       notify(error instanceof Error ? error.message : "Erro ao carregar dados.", "error");
+      throw error;
     } finally {
       setIsLoadingData(false);
     }
@@ -264,6 +273,7 @@ function AppRoutes() {
             ) : (
               <DashboardPage
                 user={user}
+                setUser={setUser}
                 schools={schools}
                 childrenList={children}
                 selectedChildId={selectedChildId}
@@ -288,6 +298,18 @@ function AppRoutes() {
             )
           }
         />
+        <Route
+          path="/teacher-dashboard"
+          element={!token ? <Navigate to="/login" replace /> : <TeacherDashboard />}
+        />
+        <Route
+          path="/parent-dashboard"
+          element={!token ? <Navigate to="/login" replace /> : <ParentDashboard />}
+        />
+        <Route
+          path="/child-interface"
+          element={!token ? <Navigate to="/login" replace /> : <ChildInterface />}
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
@@ -309,6 +331,8 @@ interface LoginPageProps {
 }
 
 function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
+  const [activeTab, setActiveTab] = useState<"login" | "first-access" | "bootstrap">("login");
+
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [isLoginLoading, setIsLoginLoading] = useState(false);
@@ -316,7 +340,13 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
+  const [adminDocument, setAdminDocument] = useState("");
   const [isAdminLoading, setIsAdminLoading] = useState(false);
+
+  const [firstAccessEmail, setFirstAccessEmail] = useState("");
+  const [firstAccessName, setFirstAccessName] = useState("");
+  const [firstAccessPassword, setFirstAccessPassword] = useState("");
+  const [isFirstAccessLoading, setIsFirstAccessLoading] = useState(false);
 
   async function handleLogin(event: React.FormEvent) {
     event.preventDefault();
@@ -336,7 +366,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
 
   async function handleBootstrap(event: React.FormEvent) {
     event.preventDefault();
-    if (!adminName || !adminEmail || !adminPassword) return;
+    if (!adminName || !adminEmail || !adminPassword || !adminDocument) return;
 
     setIsAdminLoading(true);
     try {
@@ -347,16 +377,45 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
           email: adminEmail,
           password: adminPassword,
           role: "admin",
+          document: adminDocument.trim(),
         }),
       });
-      notify("Admin inicial criado. Faça login.");
+      notify("Administrador inicial criado! Use as credenciais para fazer login.");
       setAdminName("");
       setAdminEmail("");
       setAdminPassword("");
+      setAdminDocument("");
+      setActiveTab("login");
     } catch (error) {
       notify(error instanceof Error ? error.message : "Falha ao criar admin inicial.", "error");
     } finally {
       setIsAdminLoading(false);
+    }
+  }
+
+  async function handleFirstAccess(event: React.FormEvent) {
+    event.preventDefault();
+    if (!firstAccessEmail || !firstAccessName || !firstAccessPassword) return;
+
+    setIsFirstAccessLoading(true);
+    try {
+      const response = await api<{ message: string }>("/api/v1/auth/first-access", {
+        method: "POST",
+        body: JSON.stringify({
+          email: firstAccessEmail.trim(),
+          name: firstAccessName.trim(),
+          password: firstAccessPassword.trim(),
+        }),
+      });
+      notify(response.message || "Cadastro realizado! Faça o login.");
+      setFirstAccessEmail("");
+      setFirstAccessName("");
+      setFirstAccessPassword("");
+      setActiveTab("login");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Falha ao registrar senha.", "error");
+    } finally {
+      setIsFirstAccessLoading(false);
     }
   }
 
@@ -395,7 +454,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
       </section>
 
       {/* Coluna da Direita: Formulários */}
-      <section className="lg:col-span-7 p-6 md:p-12 lg:p-16 flex flex-col justify-center items-center overflow-y-auto">
+      <section className="lg:col-span-7 p-6 md:p-12 lg:p-16 flex flex-col justify-center items-center overflow-y-auto w-full">
         <div className="w-full max-w-[480px] flex flex-col gap-8">
           <div className="text-center lg:text-left">
             {/* Logo para Mobile */}
@@ -408,76 +467,157 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
               </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-display font-black text-text-primary leading-tight">
-              Acesso à Plataforma
+              Portal do Sistema
             </h1>
             <p className="text-sm text-text-muted mt-2">
-              Seja bem-vindo de volta! Faça login na sua conta ou configure o administrador inicial.
+              Selecione o acesso abaixo para entrar ou ativar sua conta.
             </p>
           </div>
 
-          <div className="flex flex-col gap-6">
-            {/* Form Login */}
-            <Card title="Entrar na sua Conta">
-              <form onSubmit={handleLogin} className="flex flex-col gap-4">
-                <Input
-                  label="Endereço de E-mail"
-                  type="email"
-                  placeholder="Ex: seuemail@dominio.com"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  required
-                  disabled={isLoginLoading}
-                />
-                <Input
-                  label="Senha"
-                  type="password"
-                  placeholder="Digite sua senha"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  required
-                  disabled={isLoginLoading}
-                />
-                <Button type="submit" isLoading={isLoginLoading} className="w-full">
-                  Entrar
-                </Button>
-              </form>
-            </Card>
+          {/* Abas para alternar formulários */}
+          <div className="flex border-b border-border gap-2">
+            <button
+              onClick={() => setActiveTab("login")}
+              className={`flex-1 pb-3 text-center text-sm font-bold border-b-2 transition-all duration-200 ${
+                activeTab === "login"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-muted hover:text-text-primary"
+              }`}
+            >
+              Entrar
+            </button>
+            <button
+              onClick={() => setActiveTab("first-access")}
+              className={`flex-1 pb-3 text-center text-sm font-bold border-b-2 transition-all duration-200 ${
+                activeTab === "first-access"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-muted hover:text-text-primary"
+              }`}
+            >
+              Primeiro Acesso
+            </button>
+            <button
+              onClick={() => setActiveTab("bootstrap")}
+              className={`flex-1 pb-3 text-center text-sm font-bold border-b-2 transition-all duration-200 ${
+                activeTab === "bootstrap"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-muted hover:text-text-primary"
+              }`}
+            >
+              Instalação (Admin)
+            </button>
+          </div>
 
-            {/* Form Primeiro Admin */}
-            <Card title="Criar Primeiro Admin" subtitle="Configure o administrador do sistema para iniciar os testes">
-              <form onSubmit={handleBootstrap} className="flex flex-col gap-4">
-                <Input
-                  label="Nome Completo"
-                  placeholder="Ex: Administrador Principal"
-                  value={adminName}
-                  onChange={(e) => setAdminName(e.target.value)}
-                  required
-                  disabled={isAdminLoading}
-                />
-                <Input
-                  label="Endereço de E-mail"
-                  type="email"
-                  placeholder="Ex: admin@escola.com"
-                  value={adminEmail}
-                  onChange={(e) => setAdminEmail(e.target.value)}
-                  required
-                  disabled={isAdminLoading}
-                />
-                <Input
-                  label="Senha do Admin (8+ caracteres)"
-                  type="password"
-                  placeholder="Crie uma senha forte"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  disabled={isAdminLoading}
-                />
-                <Button variant="secondary" type="submit" isLoading={isAdminLoading} className="w-full">
-                  Criar Administrador
-                </Button>
-              </form>
-            </Card>
+          <div className="flex flex-col gap-6">
+            {activeTab === "login" && (
+              <Card title="Entrar na sua Conta">
+                <form onSubmit={handleLogin} className="flex flex-col gap-4">
+                  <Input
+                    label="Endereço de E-mail"
+                    type="email"
+                    placeholder="Ex: seuemail@dominio.com"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    required
+                    disabled={isLoginLoading}
+                  />
+                  <Input
+                    label="Senha"
+                    type="password"
+                    placeholder="Digite sua senha"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required
+                    disabled={isLoginLoading}
+                  />
+                  <Button type="submit" isLoading={isLoginLoading} className="w-full">
+                    Entrar
+                  </Button>
+                </form>
+              </Card>
+            )}
+
+            {activeTab === "first-access" && (
+              <Card title="Primeiro Acesso / Ativar Conta" subtitle="Registre a sua senha pessoal utilizando os dados fornecidos pela escola/administrador">
+                <form onSubmit={handleFirstAccess} className="flex flex-col gap-4">
+                  <Input
+                    label="Endereço de E-mail"
+                    type="email"
+                    placeholder="Ex: joao@gmail.com"
+                    value={firstAccessEmail}
+                    onChange={(e) => setFirstAccessEmail(e.target.value)}
+                    required
+                    disabled={isFirstAccessLoading}
+                  />
+                  <Input
+                    label="Nome Completo (idêntico ao cadastrado)"
+                    placeholder="Ex: João da Silva"
+                    value={firstAccessName}
+                    onChange={(e) => setFirstAccessName(e.target.value)}
+                    required
+                    disabled={isFirstAccessLoading}
+                  />
+                  <Input
+                    label="Nova Senha (mínimo 8 caracteres)"
+                    type="password"
+                    placeholder="Defina uma senha segura"
+                    value={firstAccessPassword}
+                    onChange={(e) => setFirstAccessPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    disabled={isFirstAccessLoading}
+                  />
+                  <Button type="submit" isLoading={isFirstAccessLoading} className="w-full">
+                    Cadastrar Minha Senha
+                  </Button>
+                </form>
+              </Card>
+            )}
+
+            {activeTab === "bootstrap" && (
+              <Card title="Criar Primeiro Admin" subtitle="Configure o administrador principal do sistema para iniciar">
+                <form onSubmit={handleBootstrap} className="flex flex-col gap-4">
+                  <Input
+                    label="Nome Completo do Administrador"
+                    placeholder="Ex: Heitor Silvio Lins"
+                    value={adminName}
+                    onChange={(e) => setAdminName(e.target.value)}
+                    required
+                    disabled={isAdminLoading}
+                  />
+                  <Input
+                    label="Endereço de E-mail"
+                    type="email"
+                    placeholder="Ex: admin@escola.com"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    required
+                    disabled={isAdminLoading}
+                  />
+                  <Input
+                    label="CPF do Administrador"
+                    placeholder="Ex: 000.000.000-00 (apenas 11 números)"
+                    value={adminDocument}
+                    onChange={(e) => setAdminDocument(e.target.value)}
+                    required
+                    disabled={isAdminLoading}
+                  />
+                  <Input
+                    label="Senha do Admin (8+ caracteres)"
+                    type="password"
+                    placeholder="Crie uma senha forte"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    disabled={isAdminLoading}
+                  />
+                  <Button variant="secondary" type="submit" isLoading={isAdminLoading} className="w-full">
+                    Criar Administrador
+                  </Button>
+                </form>
+              </Card>
+            )}
           </div>
         </div>
       </section>
@@ -488,6 +628,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
 // Tela de Dashboard Principal
 interface DashboardPageProps {
   user: User | null;
+  setUser: (user: User | null) => void;
   schools: School[];
   childrenList: Child[];
   selectedChildId: string;
@@ -512,6 +653,7 @@ interface DashboardPageProps {
 
 function DashboardPage({
   user,
+  setUser,
   schools,
   childrenList,
   selectedChildId,
@@ -536,8 +678,11 @@ function DashboardPage({
   const [isSchoolsExpanded, setIsSchoolsExpanded] = useState(false);
   const [isChildrenExpanded, setIsChildrenExpanded] = useState(false);
   const [isPedagogyExpanded, setIsPedagogyExpanded] = useState(false);
+  const [isPedagogyItemExpanded, setIsPedagogyItemExpanded] = useState(false);
   const [isMethodologyExpanded, setIsMethodologyExpanded] = useState(false);
   const [isUsersExpanded, setIsUsersExpanded] = useState(false);
+  const [activeDashboardTab, setActiveDashboardTab] = useState<"overview" | "metrics">("overview");
+  const [isLgpdExpanded, setIsLgpdExpanded] = useState(false);
 
   const [schoolToEdit, setSchoolToEdit] = useState<School | null>(null);
   const [childToEdit, setChildToEdit] = useState<Child | null>(null);
@@ -679,7 +824,7 @@ function DashboardPage({
           >
             <div className="flex items-center gap-2">
               <BookOpen className="w-4.5 h-4.5 text-primary" />
-              <span>Cadastrar Livros & Materiais</span>
+              <span>Gerenciar Livros & Materiais (Cadastrar / Consultar / Editar)</span>
             </div>
             {isPedagogyExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -693,6 +838,77 @@ function DashboardPage({
                 onSubmit={async (payload) => {
                   await onSubmit("/api/v1/pedagogy/materials", payload, materialToEdit ? "Material atualizado." : "Material cadastrado.");
                   setMaterialToEdit(null);
+                }}
+                notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
+              />
+
+              <div className="mt-4 pt-4 border-t border-border/80 flex flex-col gap-2 max-h-40 overflow-y-auto">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Livros Cadastrados ({materials.length})</span>
+                {materials.map(m => (
+                  <div key={m.id} className="flex justify-between items-center text-xs p-2 bg-background/45 rounded-lg border border-border/50">
+                    <div>
+                      <span className={`${m.is_active !== false ? "text-text-primary" : "text-text-muted line-through"}`}>{m.title}</span>
+                      {m.is_active === false && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setMaterialToEdit(m)} className="text-primary hover:underline font-semibold">Editar</button>
+                      <button onClick={() => onToggleActive("/api/v1/pedagogy/materials", m.id, m.is_active !== false)} className={`${m.is_active !== false ? "text-error" : "text-ok"} hover:underline font-semibold`}>
+                        {m.is_active !== false ? "Inativar" : "Ativar"}
+                      </button>
+                      <button onClick={async () => {
+                        if (window.confirm("Deseja realmente excluir este livro permanentemente?")) {
+                          try {
+                            await api(`/api/v1/pedagogy/materials/${m.id}`, { method: "DELETE" });
+                            notify("Livro excluído com sucesso!");
+                            await loadBase();
+                          } catch (err) {
+                            notify(err instanceof Error ? err.message : "Erro ao excluir livro.", "error");
+                          }
+                        }
+                      }} className="text-error hover:underline font-semibold">Excluir</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Accordion para vincular Capítulos aos Livros */}
+      {showPedagogyCreate && (
+        <div className="border border-border rounded-2xl overflow-hidden bg-surface mt-4">
+          <button
+            onClick={() => setIsPedagogyItemExpanded(!isPedagogyItemExpanded)}
+            className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Bookmark className="w-4.5 h-4.5 text-primary" />
+              <span>Vincular Capítulos aos Livros</span>
+            </div>
+            {isPedagogyItemExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {isPedagogyItemExpanded && (
+            <div className="p-4 border-t border-border bg-background/20">
+              <PedagogicalMaterialItemForm
+                materials={materials}
+                onSubmit={async (materialId, payload) => {
+                  await api(`/api/v1/pedagogy/materials/${materialId}/items`, {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                  });
+                  await loadBase();
+                }}
+                onDeleteItem={async (itemId) => {
+                  await api(`/api/v1/pedagogy/materials/items/${itemId}`, { method: "DELETE" });
+                  await loadBase();
+                }}
+                onUpdateItem={async (itemId, payload) => {
+                  await api(`/api/v1/pedagogy/materials/items/${itemId}`, {
+                    method: "PUT",
+                    body: JSON.stringify(payload)
+                  });
+                  await loadBase();
                 }}
                 notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
               />
@@ -796,11 +1012,70 @@ function DashboardPage({
           )}
         </div>
       )}
+
+      {/* Accordion para LGPD & Privacidade */}
+      {selectedChildId && (
+        <div className="border border-border rounded-2xl overflow-hidden bg-surface mt-4">
+          <button
+            onClick={() => setIsLgpdExpanded(!isLgpdExpanded)}
+            className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Shield className="w-4.5 h-4.5 text-primary" />
+              <span>Privacidade & LGPD (Portabilidade / Esquecimento)</span>
+            </div>
+            {isLgpdExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {isLgpdExpanded && (
+            <div className="p-4 border-t border-border bg-background/20 flex flex-col gap-3">
+              <p className="text-[10px] text-text-muted leading-relaxed">
+                Em conformidade com a LGPD, você pode baixar seus dados ou solicitar a exclusão total do prontuário deste aluno.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={() => {
+                    window.open(`/api/v1/children/${selectedChildId}/export-lgpd`, "_blank");
+                  }}
+                  variant="outline"
+                  className="w-full text-xs py-2 flex items-center justify-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" /> Exportar Dados (Portabilidade)
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (window.confirm("ATENÇÃO: Esta ação é irreversível. Todos os dados pedagógicos, rotinas, tarefas e histórico deste aluno serão excluídos permanentemente. Deseja continuar?")) {
+                      try {
+                        await api(`/api/v1/children/${selectedChildId}/forget-lgpd`, { method: "DELETE" });
+                        notify("Todos os dados do aluno foram apagados definitivamente.");
+                        window.location.reload();
+                      } catch (err) {
+                        notify(err instanceof Error ? err.message : "Erro ao excluir dados.", "error");
+                      }
+                    }
+                  }}
+                  className="w-full text-xs py-2 bg-error hover:bg-error/95 text-white flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Excluir Todos os Dados (Esquecimento)
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
   return (
-    <AppShell user={user} onLogout={onLogout} sidebarContent={sidebarContent}>
+    <>
+      {user && !user.lgpd_accepted && (
+        <LgpdConsentModal
+          onAccept={() => {
+            setUser({ ...user, lgpd_accepted: true });
+            notify("Consentimento LGPD registrado com sucesso!");
+          }}
+        />
+      )}
+      <AppShell user={user} onLogout={onLogout} sidebarContent={sidebarContent}>
       {/* Seção superior de Métricas */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <MetricCard
@@ -837,7 +1112,33 @@ function DashboardPage({
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          {/* Seção 1: Nova Rotina / Nova Tarefa */}
+          {/* Navegação de Abas do Dashboard */}
+          <div className="flex border-b border-border gap-6 mb-2">
+            <button
+              onClick={() => setActiveDashboardTab("overview")}
+              className={`pb-2.5 text-sm font-bold border-b-2 transition-all duration-200 ${
+                activeDashboardTab === "overview"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-muted hover:text-text-primary"
+              }`}
+            >
+              Visão Geral
+            </button>
+            <button
+              onClick={() => setActiveDashboardTab("metrics")}
+              className={`pb-2.5 text-sm font-bold border-b-2 transition-all duration-200 ${
+                activeDashboardTab === "metrics"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-muted hover:text-text-primary"
+              }`}
+            >
+              Relatórios & Métricas
+            </button>
+          </div>
+
+          {activeDashboardTab === "overview" ? (
+            <>
+              {/* Seção 1: Nova Rotina / Nova Tarefa */}
           {showPedagogyCreate && (
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <RoutineCreateForm
@@ -924,19 +1225,35 @@ function DashboardPage({
                     const material = materials.find((item) => item.id === id);
                     await onToggleActive("/api/v1/pedagogy/materials", id, material?.is_active !== false);
                   }}
+                  onDeleteItem={async (itemId) => {
+                    if (window.confirm("Deseja realmente excluir este capítulo do livro?")) {
+                      try {
+                        await api(`/api/v1/pedagogy/materials/items/${itemId}`, { method: "DELETE" });
+                        notify("Capítulo excluído com sucesso!");
+                        await loadBase();
+                      } catch (err) {
+                        notify(err instanceof Error ? err.message : "Erro ao excluir capítulo.", "error");
+                      }
+                    }
+                  }}
                 />
               </div>
             </div>
           </div>
 
-          {/* Seção 3: Visualização em Listas / Tabelas */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RoutineList routines={routines} />
-            <TaskList tasks={tasks} />
-          </section>
+              {/* Seção 3: Visualização em Listas / Tabelas */}
+              <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <RoutineList routines={routines} />
+                <TaskList tasks={tasks} />
+              </section>
+            </>
+          ) : (
+            <MetricsDashboard childId={selectedChildId} />
+          )}
         </div>
       )}
     </AppShell>
+    </>
   );
 }
 
