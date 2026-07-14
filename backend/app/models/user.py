@@ -14,6 +14,7 @@ class User(IdMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(180), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     school_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("schools.id"), index=True)

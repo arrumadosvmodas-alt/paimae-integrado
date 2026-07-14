@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { Bell, BookOpen, ClipboardList, GraduationCap, Sparkles, UserPlus, School as SchoolIcon, LayoutDashboard, ChevronDown, ChevronUp, Users, Bookmark, Shield, Download, Trash2 } from "lucide-react";
+import { Bell, BookOpen, ClipboardList, Edit3, GraduationCap, Plus, Sparkles, UserPlus, School as SchoolIcon, LayoutDashboard, ChevronDown, ChevronUp, Users, Bookmark, Shield, Download, Trash2, Power, Workflow } from "lucide-react";
 
 import { api, getToken, login, setToken } from "./lib/api";
 import type { Child, EvolutionEvent, Notification, Routine, School, Task, User, DailySchoolRecord, PedagogicalMaterial, PedagogicalMethodology } from "./lib/types";
@@ -730,6 +730,18 @@ function DashboardPage({
 
   const sidebarContent = (
     <div className="flex flex-col gap-6">
+      <div className="rounded-xl border border-border bg-background/50 p-3 text-xs text-text-muted leading-relaxed">
+        <div className="flex items-center gap-2 text-text-primary font-black mb-2"><Workflow className="w-4 h-4 text-primary" /> Fluxo inicial</div>
+        <ol className="space-y-1 list-decimal list-inside">
+          <li>Responsavel</li>
+          <li>Crianca</li>
+          <li>Escola</li>
+          <li>Metodologia</li>
+          <li>Livros</li>
+          <li>Capitulos</li>
+        </ol>
+      </div>
+
       {/* Seletor da criança em foco */}
       <ChildSelector
         childrenList={childrenList}
@@ -746,7 +758,7 @@ function DashboardPage({
           >
             <div className="flex items-center gap-2">
               <SchoolIcon className="w-4.5 h-4.5 text-primary" />
-              <span>Gerenciar Escolas (Cadastrar / Consultar / Editar)</span>
+              <span>3. Escolas</span>
             </div>
             {isSchoolsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -767,7 +779,7 @@ function DashboardPage({
                   <div key={s.id} className="flex justify-between items-center text-xs p-2 bg-background/45 rounded-lg border border-border/50">
                     <span className={`${s.is_active ? "text-text-primary" : "text-text-muted line-through"}`}>{s.name}</span>
                     <div className="flex gap-2">
-                      <button onClick={() => setSchoolToEdit(s)} className="text-primary hover:underline font-semibold">Editar</button>
+                      <button onClick={() => setSchoolToEdit(s)} className="text-primary hover:underline font-semibold" title="Editar" aria-label="Editar"><Edit3 className="w-3.5 h-3.5" /></button>
                       <button onClick={() => onToggleActive("/api/v1/schools", s.id, s.is_active !== false)} className={`${s.is_active ? "text-error" : "text-ok"} hover:underline font-semibold`}>
                         {s.is_active ? "Inativar" : "Ativar"}
                       </button>
@@ -789,7 +801,7 @@ function DashboardPage({
           >
             <div className="flex items-center gap-2">
               <UserPlus className="w-4.5 h-4.5 text-primary" />
-              <span>Gerenciar Alunos (Cadastrar / Consultar / Editar)</span>
+              <span>2. Criancas</span>
             </div>
             {isChildrenExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -814,7 +826,7 @@ function DashboardPage({
                       {!c.is_active && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => setChildToEdit(c)} className="text-primary hover:underline font-semibold">Editar</button>
+                      <button onClick={() => setChildToEdit(c)} className="text-primary hover:underline font-semibold" title="Editar" aria-label="Editar"><Edit3 className="w-3.5 h-3.5" /></button>
                       <button onClick={() => onToggleActive("/api/v1/children", c.id, c.is_active !== false)} className={`${c.is_active ? "text-error" : "text-ok"} hover:underline font-semibold`}>
                         {c.is_active ? "Inativar" : "Ativar"}
                       </button>
@@ -836,7 +848,7 @@ function DashboardPage({
           >
             <div className="flex items-center gap-2">
               <BookOpen className="w-4.5 h-4.5 text-primary" />
-              <span>Gerenciar Livros & Materiais (Cadastrar / Consultar / Editar)</span>
+              <span>5. Livros & Materiais</span>
             </div>
             {isPedagogyExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -863,7 +875,7 @@ function DashboardPage({
                       {m.is_active === false && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => setMaterialToEdit(m)} className="text-primary hover:underline font-semibold">Editar</button>
+                      <button onClick={() => setMaterialToEdit(m)} className="text-primary hover:underline font-semibold" title="Editar" aria-label="Editar"><Edit3 className="w-3.5 h-3.5" /></button>
                       <button onClick={() => onToggleActive("/api/v1/pedagogy/materials", m.id, m.is_active !== false)} className={`${m.is_active !== false ? "text-error" : "text-ok"} hover:underline font-semibold`}>
                         {m.is_active !== false ? "Inativar" : "Ativar"}
                       </button>
@@ -877,7 +889,7 @@ function DashboardPage({
                             notify(err instanceof Error ? err.message : "Erro ao excluir livro.", "error");
                           }
                         }
-                      }} className="text-error hover:underline font-semibold">Excluir</button>
+                      }} className="text-error hover:underline font-semibold" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </div>
                 ))}
@@ -889,14 +901,14 @@ function DashboardPage({
 
       {/* Accordion para vincular Capítulos aos Livros */}
       {showPedagogyCreate && (
-        <div className="border border-border rounded-2xl overflow-hidden bg-surface mt-4">
+        <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
             onClick={() => setIsPedagogyItemExpanded(!isPedagogyItemExpanded)}
             className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
           >
             <div className="flex items-center gap-2">
               <Bookmark className="w-4.5 h-4.5 text-primary" />
-              <span>Vincular Capítulos aos Livros</span>
+              <span>6. Capitulos dos Livros</span>
             </div>
             {isPedagogyItemExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -930,14 +942,14 @@ function DashboardPage({
       )}
       {/* Accordion para cadastrar Metodologia Pedagógica */}
       {showPedagogyCreate && (
-        <div className="border border-border rounded-2xl overflow-hidden bg-surface mt-4">
+        <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
             onClick={() => setIsMethodologyExpanded(!isMethodologyExpanded)}
             className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
           >
             <div className="flex items-center gap-2">
               <GraduationCap className="w-4.5 h-4.5 text-primary" />
-              <span>Gerenciar Metodologias (Cadastrar / Consultar / Editar)</span>
+              <span>4. Metodologias</span>
             </div>
             {isMethodologyExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -964,7 +976,7 @@ function DashboardPage({
                       {m.is_active === false && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => setMethodologyToEdit(m)} className="text-primary hover:underline font-semibold">Editar</button>
+                      <button onClick={() => setMethodologyToEdit(m)} className="text-primary hover:underline font-semibold" title="Editar" aria-label="Editar"><Edit3 className="w-3.5 h-3.5" /></button>
                       <button onClick={() => onToggleActive("/api/v1/pedagogy/methodologies", m.id, m.is_active !== false)} className={`${m.is_active !== false ? "text-error" : "text-ok"} hover:underline font-semibold`}>
                         {m.is_active !== false ? "Inativar" : "Ativar"}
                       </button>
@@ -979,14 +991,14 @@ function DashboardPage({
 
       {/* Accordion para cadastrar Usuários */}
       {showSchoolCreate && (
-        <div className="border border-border rounded-2xl overflow-hidden bg-surface mt-4">
+        <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
             onClick={() => setIsUsersExpanded(!isUsersExpanded)}
             className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
           >
             <div className="flex items-center gap-2">
               <Users className="w-4.5 h-4.5 text-primary" />
-              <span>Gerenciar Usuários (Cadastrar / Consultar / Editar)</span>
+              <span>1. Responsaveis e Agentes</span>
             </div>
             {isUsersExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -1011,11 +1023,11 @@ function DashboardPage({
                       {u.is_active === false && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => setUserToEdit(u)} className="text-primary hover:underline font-semibold">Editar</button>
+                      <button onClick={() => setUserToEdit(u)} className="text-primary hover:underline font-semibold" title="Editar" aria-label="Editar"><Edit3 className="w-3.5 h-3.5" /></button>
                       <button onClick={() => onToggleActive("/api/v1/auth/users", u.id, u.is_active !== false)} className={`${u.is_active !== false ? "text-error" : "text-ok"} hover:underline font-semibold`}>
                         {u.is_active !== false ? "Inativar" : "Ativar"}
                       </button>
-                      <button onClick={() => onDeleteUser(u.id)} className="text-error hover:underline font-semibold">Excluir</button>
+                      <button onClick={() => onDeleteUser(u.id)} className="text-error hover:underline font-semibold" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </div>
                 ))}
@@ -1027,7 +1039,7 @@ function DashboardPage({
 
       {/* Accordion para LGPD & Privacidade */}
       {selectedChildId && (
-        <div className="border border-border rounded-2xl overflow-hidden bg-surface mt-4">
+        <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
             onClick={() => setIsLgpdExpanded(!isLgpdExpanded)}
             className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"

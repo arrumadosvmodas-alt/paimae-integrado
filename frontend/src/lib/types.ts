@@ -55,6 +55,7 @@ export type User = {
   id: string;
   name: string;
   email: string;
+  phone?: string | null;
   role: string;
   school_id: string | null;
   is_active?: boolean;

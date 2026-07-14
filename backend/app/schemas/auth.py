@@ -14,6 +14,7 @@ class TokenResponse(BaseModel):
 class UserCreate(BaseModel):
     name: str = Field(min_length=2, max_length=180)
     email: EmailStr
+    phone: str | None = Field(default=None, max_length=20)
     password: str | None = Field(default=None, min_length=8, max_length=128)
     role: str = Field(pattern="^(admin|school_admin|teacher|guardian)$")
     school_id: UUID | None = None
@@ -33,6 +34,7 @@ class UserCreate(BaseModel):
 class UserRead(Timestamped):
     name: str
     email: EmailStr
+    phone: str | None
     role: str
     school_id: UUID | None
     is_active: bool
@@ -45,6 +47,7 @@ class UserRead(Timestamped):
 class UserUpdate(BaseModel):
     name: str = Field(min_length=2, max_length=180)
     email: EmailStr
+    phone: str | None = Field(default=None, max_length=20)
     password: str | None = Field(default=None, min_length=8, max_length=128)
     role: str = Field(pattern="^(admin|school_admin|teacher|guardian)$")
     school_id: UUID | None = None

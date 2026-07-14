@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card } from "../../ui/Card";
 import { Input, Select } from "../../ui/Input";
 import { Button } from "../../ui/Button";
-import { Users, X } from "lucide-react";
+import { Save, Users, X } from "lucide-react";
 import type { School, User } from "../../../lib/types";
 
 interface UserCreateFormProps {
@@ -15,6 +15,7 @@ interface UserCreateFormProps {
 export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: UserCreateFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [document, setDocument] = useState("");
   const [role, setRole] = useState("guardian");
@@ -25,6 +26,7 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
     if (userToEdit) {
       setName(userToEdit.name || "");
       setEmail(userToEdit.email || "");
+      setPhone(userToEdit.phone || "");
       setPassword(""); // Don't preload hashed password
       setDocument(userToEdit.document || "");
       setRole(userToEdit.role || "guardian");
@@ -32,6 +34,7 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
     } else {
       setName("");
       setEmail("");
+      setPhone("");
       setPassword("");
       setDocument("");
       setRole("guardian");
@@ -51,6 +54,7 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
           id: userToEdit.id,
           name: name.trim(),
           email: email.trim(),
+          phone: phone.trim() || null,
           password: password.trim() || undefined,
           role: role,
           school_id: role === "guardian" || role === "admin" ? null : schoolId || null,
@@ -60,6 +64,7 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
         await onSubmit({
           name: name.trim(),
           email: email.trim(),
+          phone: phone.trim() || null,
           password: password.trim() || undefined,
           role: role,
           school_id: role === "guardian" || role === "admin" ? null : schoolId || null,
@@ -67,6 +72,7 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
         });
         setName("");
         setEmail("");
+        setPhone("");
         setPassword("");
         setDocument("");
         setRole("guardian");
@@ -101,7 +107,16 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
           disabled={isLoading}
         />
         <Input
-          label={userToEdit ? "Nova Senha (deixe em branco para manter)" : role === "admin" ? "Senha *" : "Senha (Opcional - usuário definirá no Primeiro Acesso)"}
+          label="Telefone / WhatsApp"
+          type="tel"
+          placeholder="Ex: (85) 99999-0000"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          disabled={isLoading}
+        />
+
+        <Input
+          label={userToEdit ? "Nova Senha (deixe em branco para manter)" : role === "admin" ? "Senha *" : "Senha (Opcional - usuario definira no Primeiro Acesso)"}
           type="password"
           placeholder={userToEdit ? "Mínimo 8 caracteres" : "Mínimo 8 caracteres"}
           value={password}
@@ -164,7 +179,7 @@ export function UserCreateForm({ schools, userToEdit, onCancelEdit, onSubmit }: 
             </Button>
           )}
           <Button type="submit" isLoading={isLoading} className="flex-1">
-            {userToEdit ? "Salvar Alterações" : "Cadastrar Usuário"}
+            <Save className="w-4 h-4" /> {userToEdit ? "Salvar" : "Cadastrar"}
           </Button>
         </div>
       </form>

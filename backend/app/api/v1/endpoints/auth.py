@@ -32,6 +32,7 @@ def bootstrap_admin(payload: UserCreate, db: Annotated[Session, Depends(get_db)]
     user = User(
         name=payload.name,
         email=payload.email.lower(),
+        phone=payload.phone,
         password_hash=hash_password(payload.password) if payload.password else "",
         role="admin",
         school_id=None,
@@ -117,6 +118,7 @@ def create_user(
     user = User(
         name=payload.name,
         email=payload.email.lower(),
+        phone=payload.phone,
         password_hash=hash_password(temp_pass),
         role=payload.role,
         school_id=payload.school_id,
@@ -160,6 +162,7 @@ def update_user(
             
     user.name = payload.name
     user.email = payload.email.lower()
+    user.phone = payload.phone
     if payload.password:
         user.password_hash = hash_password(payload.password)
     user.role = payload.role
