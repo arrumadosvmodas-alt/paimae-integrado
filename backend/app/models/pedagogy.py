@@ -1,7 +1,7 @@
-from datetime import date
+﻿from datetime import date
 from uuid import UUID
 
-from sqlalchemy import Date, ForeignKey, String, Text, Integer, Boolean, JSON
+from sqlalchemy import Date, ForeignKey, String, Text, Integer, Boolean, JSON, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -93,7 +93,7 @@ class MaterialItem(IdMixin, TimestampMixin, Base):
     material_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("pedagogical_materials.id"), nullable=False, index=True)
     chapter: Mapped[str | None] = mapped_column(String(50))
     page: Mapped[str | None] = mapped_column(String(20))
-    theme: Mapped[str] = mapped_column(String(180), nullable=False)  # tema, conteúdo ou habilidade
+    theme: Mapped[str] = mapped_column(String(180), nullable=False)  # tema, conteÃºdo ou habilidade
     description: Mapped[str | None] = mapped_column(Text)
 
     material = relationship("PedagogicalMaterial", back_populates="items")
@@ -184,3 +184,52 @@ class InteractionResponse(IdMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     interaction = relationship("Interaction", back_populates="responses")
+
+
+class DailyLearningSession(IdMixin, TimestampMixin, Base):
+    __tablename__ = "daily_learning_sessions"
+    __table_args__ = (UniqueConstraint("child_id", "date", name="uq_daily_learning_session_child_date"),)
+
+    child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, index=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="waiting_schedule")
+    source: Mapped[str] = mapped_column(String(30), default="system")
+    summary: Mapped[str | None] = mapped_column(Text)
+    parent_guidance: Mapped[str | None] = mapped_column(Text)
+    child_activity: Mapped[str | None] = mapped_column(Text)
+    acknowledged_at: Mapped[date | None] = mapped_column(Date)
+    context_json: Mapped[dict | None] = mapped_column(JSON)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    child = relationship("Child")
+
+
+class AttendanceRecord(IdMixin, TimestampMixin, Base):
+    __tablename__ = "attendance_records"
+    __table_args__ = (UniqueConstraint("child_id", "date", name="uq_attendance_record_child_date"),)
+
+    child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, index=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="present")
+    reason: Mapped[str | None] = mapped_column(String(180))
+    notes: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    child = relationship("Child")
+
+
+class AcademicGrade(IdMixin, TimestampMixin, Base):
+    __tablename__ = "academic_grades"
+
+    child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, index=True)
+    school_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("schools.id"), nullable=False, index=True)
+    subject: Mapped[str] = mapped_column(String(80), nullable=False)
+    assessment_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    assessment_date: Mapped[date | None] = mapped_column(Date)
+    score: Mapped[int | None] = mapped_column(Integer)
+    max_score: Mapped[int | None] = mapped_column(Integer)
+    notes: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    child = relationship("Child")
+    school = relationship("School")

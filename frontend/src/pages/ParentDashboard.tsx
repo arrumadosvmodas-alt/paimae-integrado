@@ -1,177 +1,181 @@
-import React, { useState, useEffect } from "react";
-import { Users, AlertTriangle, TrendingUp, MessageSquare, Loader } from "lucide-react";
+﻿import React, { useEffect, useMemo, useState } from "react";
+import { Bell, CalendarDays, CheckCircle2, ClipboardCheck, GraduationCap, Loader, Plus, UserCheck } from "lucide-react";
 import { Card } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
 import { ChildSelector } from "../components/domains/child/ChildSelector";
-import { LearningAnalytics } from "../components/domains/adaptive/LearningAnalytics";
-import { InteractionCard } from "../components/domains/adaptive/InteractionCard";
-import type { Child, Interaction } from "../lib/types";
+import type { AcademicGrade, Child, DailyJourney } from "../lib/types";
 import { api } from "../lib/api";
+
+const today = new Date().toISOString().slice(0, 10);
 
 export function ParentDashboard() {
   const [children, setChildren] = useState<Child[]>([]);
-  const [selectedChildId, setSelectedChildId] = useState<string>("");
-  const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState("");
+  const [journey, setJourney] = useState<DailyJourney | null>(null);
   const [loading, setLoading] = useState(true);
+  const [attendanceStatus, setAttendanceStatus] = useState("present");
+  const [attendanceReason, setAttendanceReason] = useState("");
+  const [grade, setGrade] = useState({ subject: "", assessment_name: "", score: "", max_score: "10", notes: "" });
+
+  const selectedChild = useMemo(() => children.find((item) => item.id === selectedChildId), [children, selectedChildId]);
+
+  async function loadChildren() {
+    setLoading(true);
+    try {
+      const kids = await api<Child[]>("/api/v1/children");
+      setChildren(kids);
+      const nextChildId = selectedChildId || kids[0]?.id || "";
+      setSelectedChildId(nextChildId);
+      if (nextChildId) await loadJourney(nextChildId);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadJourney(childId = selectedChildId) {
+    if (!childId) return;
+    const data = await api<DailyJourney>(`/api/v1/daily-journey?child_id=${childId}&target_date=${today}`);
+    setJourney(data);
+    setAttendanceStatus(data.attendance?.status || "present");
+    setAttendanceReason(data.attendance?.reason || "");
+  }
 
   useEffect(() => {
-    const loadChildren = async () => {
-      try {
-        const kids = await api<Child[]>("/api/v1/children");
-        setChildren(kids);
-        if (kids.length > 0) {
-          setSelectedChildId(kids[0].id);
-        }
-      } catch (err) {
-        console.error("Erro ao carregar crianças:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadChildren();
+    loadChildren().catch(console.error);
   }, []);
 
   useEffect(() => {
-    if (selectedChildId) {
-      const loadInteractions = async () => {
-        try {
-          const data = await api<Interaction[]>(
-            `/api/v1/interactions?child_id=${selectedChildId}&limit=10`
-          );
-          setInteractions(data);
-        } catch (err) {
-          console.error("Erro ao carregar interações:", err);
-        }
-      };
-
-      loadInteractions();
-    }
+    if (selectedChildId) loadJourney(selectedChildId).catch(console.error);
   }, [selectedChildId]);
 
-  const selectedChild = children.find((c) => c.id === selectedChildId);
-  const pendingInteractions = interactions.filter((i) => i.status === "scheduled");
-  const respondedInteractions = interactions.filter((i) => i.status === "sent" || i.status === "read");
+  async function saveAttendance() {
+    if (!selectedChildId) return;
+    await api("/api/v1/daily-journey/attendance", {
+      method: "POST",
+      body: JSON.stringify({ child_id: selectedChildId, date: today, status: attendanceStatus, reason: attendanceReason || null, notes: null }),
+    });
+    await loadJourney();
+  }
+
+  async function saveGrade(event: React.FormEvent) {
+    event.preventDefault();
+    if (!selectedChild) return;
+    await api<AcademicGrade>("/api/v1/daily-journey/grades", {
+      method: "POST",
+      body: JSON.stringify({
+        child_id: selectedChild.id,
+        school_id: selectedChild.school_id,
+        subject: grade.subject,
+        assessment_name: grade.assessment_name,
+        assessment_date: today,
+        score: grade.score ? Number(grade.score) : null,
+        max_score: grade.max_score ? Number(grade.max_score) : null,
+        notes: grade.notes || null,
+      }),
+    });
+    setGrade({ subject: "", assessment_name: "", score: "", max_score: "10", notes: "" });
+    await loadJourney();
+  }
+
+  async function acknowledge() {
+    if (!selectedChildId) return;
+    await api(`/api/v1/daily-journey/acknowledge?child_id=${selectedChildId}&target_date=${today}`, {
+      method: "POST",
+      body: JSON.stringify({ acknowledged: true }),
+    });
+    await loadJourney();
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Users className="w-8 h-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900">Acompanhamento de Progresso</h1>
+    <main className="min-h-screen bg-background text-text-primary">
+      <header className="border-b border-border bg-surface sticky top-0 z-20">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <UserCheck className="w-6 h-6 text-primary shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-xl font-black truncate">App do Responsavel</h1>
+              <p className="text-xs text-text-muted">Jornada diaria, frequencia, notas e ciencia</p>
+            </div>
           </div>
+          <span className="text-xs font-bold text-text-muted">{new Date(today).toLocaleDateString("pt-BR")}</span>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
         {loading ? (
-          <div className="flex items-center justify-center p-8">
-            <Loader className="w-6 h-6 animate-spin text-gray-400 mr-2" />
-            <span className="text-gray-500">Carregando...</span>
-          </div>
+          <Card className="p-6 flex items-center gap-2"><Loader className="w-4 h-4 animate-spin" /> Carregando...</Card>
         ) : children.length === 0 ? (
-          <Card className="p-8 text-center">
-            <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">Nenhuma criança cadastrada</p>
-          </Card>
+          <Card className="p-6 text-center text-text-muted">Nenhuma crianca vinculada.</Card>
         ) : (
-          <div className="space-y-6">
-            {/* Seletor de Criança */}
-            <Card className="p-6">
-              <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Selecione uma Criança
-              </h2>
-              <ChildSelector
-                childrenList={children}
-                selectedChildId={selectedChildId}
-                onSelectChild={setSelectedChildId}
-              />
+          <>
+            <Card className="p-4">
+              <ChildSelector childrenList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} />
             </Card>
 
-            {selectedChild && (
-              <div className="space-y-6">
-                {/* Análise de Progresso */}
-                <div>
-                  <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Análise de Aprendizagem
-                  </h2>
-                  <LearningAnalytics childId={selectedChildId} />
-                </div>
-
-                {/* Interações */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Pendentes */}
+            {journey?.requires_manual_schedule && (
+              <Card className="p-4 border-warning/40 bg-warning/10">
+                <div className="flex items-start gap-3">
+                  <Bell className="w-5 h-5 text-warning shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5" />
-                      Respostas Pendentes ({pendingInteractions.length})
-                    </h3>
-                    {pendingInteractions.length > 0 ? (
-                      <div className="space-y-4">
-                        {pendingInteractions.map((interaction) => (
-                          <InteractionCard
-                            key={interaction.id}
-                            interaction={interaction}
-                            showFeedback={false}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <Card className="p-6 text-center">
-                        <p className="text-gray-500">Nenhuma interação pendente</p>
-                      </Card>
-                    )}
-                  </div>
-
-                  {/* Respondidas */}
-                  <div>
-                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5" />
-                      Respondidas ({respondedInteractions.length})
-                    </h3>
-                    {respondedInteractions.length > 0 ? (
-                      <div className="space-y-4">
-                        {respondedInteractions.map((interaction) => (
-                          <Card key={interaction.id} className="p-4">
-                            <p className="text-sm text-gray-600 mb-2">{interaction.message}</p>
-                            <p className="text-xs text-green-600 flex items-center gap-1">
-                              ✓ Respondida em{" "}
-                              {interaction.sent_at
-                                ? new Date(interaction.sent_at).toLocaleDateString("pt-BR")
-                                : "data desconhecida"}
-                            </p>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <Card className="p-6 text-center">
-                        <p className="text-gray-500">Nenhuma resposta registrada ainda</p>
-                      </Card>
-                    )}
+                    <h2 className="font-bold">Cronograma necessario</h2>
+                    <p className="text-sm text-text-muted">Nao existe atividade registrada para hoje. Inclua no painel central ou no modulo pedagogico para gerar as interacoes automaticamente.</p>
                   </div>
                 </div>
-
-                {/* Alertas */}
-                <Card className="p-4 border-yellow-200 bg-yellow-50">
-                  <h3 className="font-semibold text-yellow-900 mb-3 flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5" />
-                    Alertas Importantes
-                  </h3>
-                  <ul className="space-y-2 text-sm text-yellow-800">
-                    <li>• Acompanhe regularmente o progresso</li>
-                    <li>• Incentive respostas nas interações</li>
-                    <li>• Converse com o professor sobre dificuldades</li>
-                  </ul>
-                </Card>
-              </div>
+              </Card>
             )}
-          </div>
+
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <Card className="p-5 lg:col-span-2">
+                <div className="flex items-center gap-2 mb-3"><CalendarDays className="w-5 h-5 text-primary" /><h2 className="font-black">Atividades e orientacoes de hoje</h2></div>
+                <p className="text-sm text-text-muted mb-4">{journey?.session.summary}</p>
+                <div className="space-y-3">
+                  {journey?.parent_interactions.map((interaction) => (
+                    <div key={interaction.id} className="rounded-lg border border-border p-3 text-sm whitespace-pre-wrap">{interaction.message}</div>
+                  ))}
+                  {!journey?.parent_interactions.length && <p className="text-sm text-text-muted">{journey?.session.parent_guidance}</p>}
+                </div>
+                <Button onClick={acknowledge} className="mt-4 w-full sm:w-auto" disabled={Boolean(journey?.session.acknowledged_at)}>
+                  <CheckCircle2 className="w-4 h-4" /> {journey?.session.acknowledged_at ? "Ciencia confirmada" : "Confirmar ciencia"}
+                </Button>
+              </Card>
+
+              <Card className="p-5">
+                <div className="flex items-center gap-2 mb-3"><ClipboardCheck className="w-5 h-5 text-primary" /><h2 className="font-black">Frequencia</h2></div>
+                <select className="w-full h-11 rounded-lg border border-border bg-surface px-3 text-sm" value={attendanceStatus} onChange={(e) => setAttendanceStatus(e.target.value)}>
+                  <option value="present">Foi a escola</option>
+                  <option value="absent">Nao foi</option>
+                  <option value="sick">Doente</option>
+                  <option value="holiday">Feriado/recesso</option>
+                  <option value="remote">Atividade remota</option>
+                  <option value="excused">Falta justificada</option>
+                </select>
+                <Input className="mt-3" placeholder="Motivo ou observacao" value={attendanceReason} onChange={(e) => setAttendanceReason(e.target.value)} />
+                <Button onClick={saveAttendance} className="mt-3 w-full">Salvar frequencia</Button>
+              </Card>
+            </section>
+
+            <Card className="p-5">
+              <div className="flex items-center gap-2 mb-4"><GraduationCap className="w-5 h-5 text-primary" /><h2 className="font-black">Notas escolares</h2></div>
+              <form onSubmit={saveGrade} className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <Input required placeholder="Disciplina" value={grade.subject} onChange={(e) => setGrade({ ...grade, subject: e.target.value })} />
+                <Input required placeholder="Avaliacao" value={grade.assessment_name} onChange={(e) => setGrade({ ...grade, assessment_name: e.target.value })} />
+                <Input placeholder="Nota" value={grade.score} onChange={(e) => setGrade({ ...grade, score: e.target.value })} />
+                <Input placeholder="Maximo" value={grade.max_score} onChange={(e) => setGrade({ ...grade, max_score: e.target.value })} />
+                <Button type="submit"><Plus className="w-4 h-4" /> Adicionar</Button>
+              </form>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                {journey?.grades.map((item) => (
+                  <div key={item.id} className="rounded-lg border border-border p-3 text-sm flex justify-between gap-3">
+                    <span className="font-semibold">{item.subject} - {item.assessment_name}</span>
+                    <span>{item.score ?? "-"}/{item.max_score ?? "-"}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </>
         )}
       </div>
-    </div>
+    </main>
   );
 }

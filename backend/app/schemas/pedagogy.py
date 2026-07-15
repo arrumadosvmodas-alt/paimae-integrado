@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
@@ -42,7 +42,7 @@ class MaterialItemRead(Timestamped):
     description: str | None
 
 
-# --- MATERIAL DIDÁTICO ---
+# --- MATERIAL DIDÃTICO ---
 class PedagogicalMaterialCreate(BaseModel):
     school_id: UUID
     title: str = Field(min_length=2, max_length=180)
@@ -165,7 +165,7 @@ class SchoolScheduleUpdate(BaseModel):
     fallback_used: bool = False
     status: str = Field(default="planned", pattern="^(planned|confirmed|completed|skipped)$")
 
-# --- INTERAÇÃO FAMILIAR ---
+# --- INTERAÃ‡ÃƒO FAMILIAR ---
 class FamilyInteractionSuggestionCreate(BaseModel):
     suggestion_text: str
 
@@ -175,7 +175,7 @@ class FamilyInteractionSuggestionRead(Timestamped):
     suggestion_text: str
 
 
-# --- DIÁRIO ESCOLAR ---
+# --- DIÃRIO ESCOLAR ---
 class DailySchoolRecordCreate(BaseModel):
     child_id: UUID
     date: date
@@ -200,3 +200,73 @@ class DailySchoolRecordUpdate(BaseModel):
     observed_skills: str | None = None
     engagement_score: int | None = Field(default=None, ge=1, le=5)
     suggestions: list[FamilyInteractionSuggestionCreate] | None = None
+
+
+# --- JORNADA DIARIA ---
+class AttendanceRecordCreate(BaseModel):
+    child_id: UUID
+    date: date
+    status: str = Field(default="present", pattern="^(present|absent|sick|holiday|remote|excused)$")
+    reason: str | None = Field(default=None, max_length=180)
+    notes: str | None = None
+
+
+class AttendanceRecordRead(Timestamped):
+    child_id: UUID
+    date: date
+    status: str
+    reason: str | None
+    notes: str | None
+    is_active: bool
+
+
+class AcademicGradeCreate(BaseModel):
+    child_id: UUID
+    school_id: UUID
+    subject: str = Field(min_length=2, max_length=80)
+    assessment_name: str = Field(min_length=2, max_length=120)
+    assessment_date: date | None = None
+    score: int | None = Field(default=None, ge=0)
+    max_score: int | None = Field(default=None, ge=1)
+    notes: str | None = None
+
+
+class AcademicGradeRead(Timestamped):
+    child_id: UUID
+    school_id: UUID
+    subject: str
+    assessment_name: str
+    assessment_date: date | None
+    score: int | None
+    max_score: int | None
+    notes: str | None
+    is_active: bool
+
+
+class DailyLearningSessionRead(Timestamped):
+    child_id: UUID
+    date: date
+    status: str
+    source: str
+    summary: str | None
+    parent_guidance: str | None
+    child_activity: str | None
+    acknowledged_at: date | None
+    context_json: dict | None
+    is_active: bool
+
+
+class DailyJourneyRead(BaseModel):
+    date: date
+    child_id: UUID
+    session: DailyLearningSessionRead
+    schedules: list[SchoolScheduleRead]
+    child_interactions: list[dict]
+    parent_interactions: list[dict]
+    attendance: AttendanceRecordRead | None
+    grades: list[AcademicGradeRead]
+    requires_manual_schedule: bool
+
+
+class DailySessionAcknowledge(BaseModel):
+    acknowledged: bool = True

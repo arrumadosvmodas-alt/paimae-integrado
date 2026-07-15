@@ -1,4 +1,4 @@
-from app.models.audit import AuditLog
+﻿from app.models.audit import AuditLog
 from app.models.child import Child
 from app.models.child_guardian import ChildGuardian
 from app.models.evolution import EvolutionEvent
@@ -19,6 +19,9 @@ from app.models.pedagogy import (
     DailyStudyPlanItem,
     Interaction,
     InteractionResponse,
+    DailyLearningSession,
+    AttendanceRecord,
+    AcademicGrade,
 )
 from app.models.learning import (
     LearningProfile,
@@ -68,6 +71,9 @@ __all__ = [
     "DailyStudyPlanItem",
     "Interaction",
     "InteractionResponse",
+    "DailyLearningSession",
+    "AttendanceRecord",
+    "AcademicGrade",
     "LearningProfile",
     "LearningHistory",
     "AdaptiveRecommendation",
@@ -88,4 +94,6 @@ __all__ = [
     "Reward",
     "RewardClaim",
 ]
+
+
 

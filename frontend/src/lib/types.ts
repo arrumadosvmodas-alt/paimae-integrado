@@ -1,4 +1,4 @@
-export type School = {
+﻿export type School = {
   id: string;
   name: string;
   document: string | null;
@@ -152,7 +152,7 @@ export type ScheduleGenerationResult = {
   material_id: string | null;
   fallback_used: boolean;
 };
-// ===== FASE C: Orquestração =====
+// ===== FASE C: OrquestraÃ§Ã£o =====
 export type StudyPlan = {
   id: string;
   child_id: string;
@@ -267,7 +267,7 @@ export type LearningMetrics = {
   recommendations: string[];
 };
 
-// ===== Extensão de Types Existentes =====
+// ===== ExtensÃ£o de Types Existentes =====
 export type ChildExtended = Child & {
   grade?: string;
   shift?: string;
@@ -276,3 +276,52 @@ export type ChildExtended = Child & {
   observations?: string;
 };
 
+
+export type AttendanceRecord = {
+  id: string;
+  child_id: string;
+  date: string;
+  status: "present" | "absent" | "sick" | "holiday" | "remote" | "excused";
+  reason: string | null;
+  notes: string | null;
+  is_active: boolean;
+};
+
+export type AcademicGrade = {
+  id: string;
+  child_id: string;
+  school_id: string;
+  subject: string;
+  assessment_name: string;
+  assessment_date: string | null;
+  score: number | null;
+  max_score: number | null;
+  notes: string | null;
+  is_active: boolean;
+};
+
+export type DailyLearningSession = {
+  id: string;
+  child_id: string;
+  date: string;
+  status: string;
+  source: string;
+  summary: string | null;
+  parent_guidance: string | null;
+  child_activity: string | null;
+  acknowledged_at: string | null;
+  context_json: Record<string, any> | null;
+  is_active: boolean;
+};
+
+export type DailyJourney = {
+  date: string;
+  child_id: string;
+  session: DailyLearningSession;
+  schedules: SchoolSchedule[];
+  child_interactions: Interaction[];
+  parent_interactions: Interaction[];
+  attendance: AttendanceRecord | null;
+  grades: AcademicGrade[];
+  requires_manual_schedule: boolean;
+};

@@ -1,136 +1,113 @@
-import React, { useState, useEffect } from "react";
-import { MessageSquare, TrendingUp, Trophy, Zap, Loader, Star } from "lucide-react";
+﻿import React, { useEffect, useState } from "react";
+import { CheckCircle2, Loader, MessageSquare, Send, Sparkles, Star } from "lucide-react";
 import { Card } from "../components/ui/Card";
-import { LearningAnalytics } from "../components/domains/adaptive/LearningAnalytics";
-import { InteractionCard } from "../components/domains/adaptive/InteractionCard";
-import type { Interaction } from "../lib/types";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import type { Child, DailyJourney, Interaction } from "../lib/types";
 import { api } from "../lib/api";
 
+const today = new Date().toISOString().slice(0, 10);
+
 export function ChildInterface() {
-  const [interactions, setInteractions] = useState<Interaction[]>([]);
-  const [gamificationData, setGamificationData] = useState({
-    badges: ["🌟", "💡", "🔥"],
-    streak: 5,
-    points: 150,
-    nextChallenge: "Dominar Frações",
-  });
+  const [children, setChildren] = useState<Child[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState(localStorage.getItem("child_id") || "");
+  const [journey, setJourney] = useState<DailyJourney | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const childId = localStorage.getItem("child_id") || "";
+
+  async function load() {
+    setLoading(true);
+    try {
+      const kids = await api<Child[]>("/api/v1/children");
+      setChildren(kids);
+      const childId = selectedChildId || kids[0]?.id || "";
+      if (childId) {
+        setSelectedChildId(childId);
+        localStorage.setItem("child_id", childId);
+        const data = await api<DailyJourney>(`/api/v1/daily-journey?child_id=${childId}&target_date=${today}`);
+        setJourney(data);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        if (!childId) {
-          console.warn("child_id not found");
-          return;
-        }
+    load().catch(console.error);
+  }, []);
 
-        const data = await api<Interaction[]>(`/api/v1/interactions?child_id=${childId}&limit=5`);
-        const pending = data.filter((i) => i.status === "scheduled");
-        setInteractions(pending);
-      } catch (err) {
-        console.error("Erro ao carregar interações:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  async function changeChild(childId: string) {
+    setSelectedChildId(childId);
+    localStorage.setItem("child_id", childId);
+    const data = await api<DailyJourney>(`/api/v1/daily-journey?child_id=${childId}&target_date=${today}`);
+    setJourney(data);
+  }
 
-    loadData();
-  }, [childId]);
+  async function sendAnswer(interaction: Interaction) {
+    const responseText = answers[interaction.id]?.trim();
+    if (!responseText) return;
+    await api(`/api/v1/interactions/${interaction.id}/responses`, {
+      method: "POST",
+      body: JSON.stringify({ responder_type: "child", response_text: responseText, response_score: 5, responded_at: today }),
+    });
+    setAnswers({ ...answers, [interaction.id]: "" });
+    if (selectedChildId) {
+      const data = await api<DailyJourney>(`/api/v1/daily-journey?child_id=${selectedChildId}&target_date=${today}`);
+      setJourney(data);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Star className="w-8 h-8 text-purple-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Meu Aprendizado</h1>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-purple-600">{gamificationData.points}</p>
-              <p className="text-xs text-gray-500">Pontos</p>
+    <main className="min-h-screen bg-background text-text-primary">
+      <header className="border-b border-border bg-surface sticky top-0 z-20">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Star className="w-7 h-7 text-primary shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-xl font-black truncate">App da Crianca</h1>
+              <p className="text-xs text-text-muted">Atividades de hoje</p>
             </div>
           </div>
+          <div className="rounded-lg bg-primary/10 px-3 py-2 text-sm font-black text-primary flex items-center gap-1"><Sparkles className="w-4 h-4" /> Hoje</div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
         {loading ? (
-          <div className="flex items-center justify-center p-8">
-            <Loader className="w-6 h-6 animate-spin text-gray-400 mr-2" />
-            <span className="text-gray-500">Carregando...</span>
-          </div>
+          <Card className="p-6 flex items-center gap-2"><Loader className="w-4 h-4 animate-spin" /> Carregando...</Card>
+        ) : !selectedChildId ? (
+          <Card className="p-6 text-center text-text-muted">Nenhuma crianca disponivel.</Card>
         ) : (
-          <div className="space-y-6">
-            {/* Gamificação */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Card className="p-4 text-center border-purple-200 bg-purple-50">
-                <Trophy className="w-8 h-8 mx-auto mb-2 text-purple-600" />
-                <p className="text-sm text-gray-600">Troféus</p>
-                <div className="flex justify-center gap-1 mt-2">
-                  {gamificationData.badges.map((badge, i) => (
-                    <span key={i} className="text-xl">{badge}</span>
-                  ))}
-                </div>
-              </Card>
-
-              <Card className="p-4 text-center border-orange-200 bg-orange-50">
-                <Zap className="w-8 h-8 mx-auto mb-2 text-orange-600" />
-                <p className="text-sm text-gray-600">Sequência</p>
-                <p className="text-2xl font-bold text-orange-600 mt-1">{gamificationData.streak} dias</p>
-              </Card>
-
-              <Card className="p-4 text-center border-blue-200 bg-blue-50">
-                <Star className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                <p className="text-sm text-gray-600">Próximo Desafio</p>
-                <p className="text-sm font-semibold text-blue-600 mt-1">{gamificationData.nextChallenge}</p>
-              </Card>
-            </div>
-
-            {/* Interações Agendadas */}
-            {interactions.length > 0 && (
-              <div>
-                <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5" />
-                  Atividades Agendadas ({interactions.length})
-                </h2>
-                <div className="space-y-4">
-                  {interactions.map((interaction) => (
-                    <InteractionCard
-                      key={interaction.id}
-                      interaction={interaction}
-                      onResponseSubmitted={() => {
-                        setInteractions(interactions.filter((i) => i.id !== interaction.id));
-                      }}
-                      showFeedback={true}
-                    />
-                  ))}
-                </div>
-              </div>
+          <>
+            {children.length > 1 && (
+              <select className="w-full h-11 rounded-lg border border-border bg-surface px-3 text-sm" value={selectedChildId} onChange={(e) => changeChild(e.target.value)}>
+                {children.map((child) => <option key={child.id} value={child.id}>{child.full_name}</option>)}
+              </select>
             )}
 
-            {interactions.length === 0 && !loading && (
-              <Card className="p-8 text-center">
-                <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium">Nenhuma atividade agendada no momento</p>
-                <p className="text-sm text-gray-400 mt-2">Volte em breve para novas atividades!</p>
-              </Card>
-            )}
+            <Card className="p-5">
+              <div className="flex items-center gap-2 mb-3"><MessageSquare className="w-5 h-5 text-primary" /><h2 className="font-black">Minha missao do dia</h2></div>
+              <p className="text-sm text-text-muted whitespace-pre-wrap">{journey?.session.child_activity || "Ainda nao existe atividade preparada para hoje."}</p>
+            </Card>
 
-            {/* Análise de Progresso */}
-            <div>
-              <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                Seu Progresso
-              </h2>
-              {childId && <LearningAnalytics childId={childId} />}
-            </div>
-          </div>
+            <section className="space-y-4">
+              {journey?.child_interactions.map((interaction) => (
+                <Card key={interaction.id} className="p-5">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap mb-4">{interaction.message}</p>
+                  {interaction.responses?.length ? (
+                    <div className="flex items-center gap-2 text-sm font-bold text-ok"><CheckCircle2 className="w-4 h-4" /> Resposta enviada</div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input placeholder="Digite sua resposta" value={answers[interaction.id] || ""} onChange={(e) => setAnswers({ ...answers, [interaction.id]: e.target.value })} />
+                      <Button onClick={() => sendAnswer(interaction)}><Send className="w-4 h-4" /> Enviar</Button>
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </section>
+          </>
         )}
       </div>
-    </div>
+    </main>
   );
 }

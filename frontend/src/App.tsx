@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { Bell, BookOpen, ClipboardList, Edit3, GraduationCap, Plus, Sparkles, UserPlus, School as SchoolIcon, LayoutDashboard, ChevronDown, ChevronUp, Users, Bookmark, Shield, Download, Trash2, Power, Workflow } from "lucide-react";
 
@@ -17,7 +17,7 @@ import { Toast, ToastType } from "./components/ui/Toast";
 import { ThemeProvider, useTheme } from "./components/layout/ThemeContext";
 import { AppShell } from "./components/layout/AppShell";
 
-// Componentes de Domínio
+// Componentes de DomÃ­nio
 import { SchoolCreateForm } from "./components/domains/school/SchoolCreateForm";
 import { ChildCreateForm } from "./components/domains/child/ChildCreateForm";
 import { ChildSelector } from "./components/domains/child/ChildSelector";
@@ -30,7 +30,7 @@ import { NotificationList } from "./components/domains/notification/Notification
 import { EvolutionEventCreateForm } from "./components/domains/evolution/EvolutionEventCreateForm";
 import { EvolutionSummary } from "./components/domains/evolution/EvolutionSummary";
 
-// Módulo Pedagógico
+// MÃ³dulo PedagÃ³gico
 import { PedagogicalMaterialForm } from "./components/domains/pedagogy/PedagogicalMaterialForm";
 import { PedagogicalMaterialItemForm } from "./components/domains/pedagogy/PedagogicalMaterialItemForm";
 import { PedagogicalMaterialList } from "./components/domains/pedagogy/PedagogicalMaterialList";
@@ -42,12 +42,12 @@ import { FamilyInteractions } from "./components/domains/pedagogy/FamilyInteract
 import { PedagogicalMethodologyForm } from "./components/domains/pedagogy/PedagogicalMethodologyForm";
 import { SchoolScheduleManager } from "./components/domains/pedagogy/SchoolScheduleManager";
 
-// Páginas Fase F
+// PÃ¡ginas Fase F
 import { TeacherDashboard } from "./pages/TeacherDashboard";
 import { ParentDashboard } from "./pages/ParentDashboard";
 import { ChildInterface } from "./pages/ChildInterface";
 
-// Página Fase G
+// PÃ¡gina Fase G
 import { AnalyticsDashboard } from "./pages/AnalyticsDashboard";
 
 export function App() {
@@ -157,9 +157,9 @@ function AppRoutes() {
         setMethodologies([]);
       }
 
-      setSummary(""); // Limpa o resumo de IA da criança anterior
+      setSummary(""); // Limpa o resumo de IA da crianÃ§a anterior
     } catch (error) {
-      notify(error instanceof Error ? error.message : "Erro ao carregar dados da criança.", "error");
+      notify(error instanceof Error ? error.message : "Erro ao carregar dados da crianÃ§a.", "error");
     }
   }
 
@@ -184,7 +184,7 @@ function AppRoutes() {
     setTokenState(null);
     setUser(null);
     navigate("/login");
-    notify("Você saiu do sistema.");
+    notify("VocÃª saiu do sistema.");
   };
 
   const handleLoginSubmit = async (tokenString: string) => {
@@ -220,25 +220,25 @@ function AppRoutes() {
   }
 
   async function handleDeleteUser(id: string) {
-    if (!window.confirm("Deseja realmente excluir este usuário permanentemente?")) return;
+    if (!window.confirm("Deseja realmente excluir este usuÃ¡rio permanentemente?")) return;
     try {
       await api(`/api/v1/auth/users/${id}`, { method: "DELETE" });
-      notify("Usuário excluído com sucesso.");
+      notify("UsuÃ¡rio excluÃ­do com sucesso.");
       await loadBase();
     } catch (error) {
-      notify(error instanceof Error ? error.message : "Erro ao excluir usuário.", "error");
+      notify(error instanceof Error ? error.message : "Erro ao excluir usuÃ¡rio.", "error");
     }
   }
 
   async function handleCompleteNotification(id: string) {
     try {
       await api(`/api/v1/notifications/${id}/complete`, { method: "POST" });
-      notify("Notificação concluída.");
+      notify("NotificaÃ§Ã£o concluÃ­da.");
       if (selectedChildId) {
         await loadChildData(selectedChildId);
       }
     } catch (error) {
-      notify(error instanceof Error ? error.message : "Erro ao concluir notificação.", "error");
+      notify(error instanceof Error ? error.message : "Erro ao concluir notificaÃ§Ã£o.", "error");
     }
   }
 
@@ -308,13 +308,15 @@ function AppRoutes() {
           element={!token ? <Navigate to="/login" replace /> : <TeacherDashboard />}
         />
         <Route
-          path="/parent-dashboard"
+          path="/responsavel"
           element={!token ? <Navigate to="/login" replace /> : <ParentDashboard />}
         />
         <Route
-          path="/child-interface"
+          path="/crianca"
           element={!token ? <Navigate to="/login" replace /> : <ChildInterface />}
         />
+        <Route path="/parent-dashboard" element={!token ? <Navigate to="/login" replace /> : <Navigate to="/responsavel" replace />} />
+        <Route path="/child-interface" element={!token ? <Navigate to="/login" replace /> : <Navigate to="/crianca" replace />} />
         <Route
           path="/analytics"
           element={!token ? <Navigate to="/login" replace /> : <AnalyticsDashboard />}
@@ -416,7 +418,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
           password: firstAccessPassword.trim(),
         }),
       });
-      notify(response.message || "Cadastro realizado! Faça o login.");
+      notify(response.message || "Cadastro realizado! FaÃ§a o login.");
       setFirstAccessEmail("");
       setFirstAccessName("");
       setFirstAccessPassword("");
@@ -432,7 +434,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
     <main className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-background transition-colors duration-200">
       {/* Coluna da Esquerda: Ilustrativa Premium */}
       <section className="lg:col-span-5 bg-gradient-to-br from-primary to-indigo-700 text-white p-8 md:p-12 flex flex-col justify-between relative overflow-hidden hidden lg:flex">
-        {/* Elemento de iluminação decorativo */}
+        {/* Elemento de iluminaÃ§Ã£o decorativo */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full blur-[80px] -mr-40 -mt-40 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-black/10 rounded-full blur-[60px] -ml-20 -mb-20 pointer-events-none" />
 
@@ -441,7 +443,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
             <GraduationCap className="w-6 h-6" />
           </div>
           <span className="font-display font-extrabold text-xl tracking-tight">
-            Pai&MãeIntegrado
+            Pai&MÃ£eIntegrado
           </span>
         </div>
 
@@ -453,16 +455,16 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
             Sintonia perfeita entre a escola e o lar.
           </h2>
           <p className="text-sm md:text-base text-white/80 leading-relaxed max-w-md">
-            Acompanhe rotinas diárias, tarefas pendentes, receba notificações cruciais e visualize análises comportamentais consolidadas por inteligência artificial para o desenvolvimento completo de seu filho.
+            Acompanhe rotinas diÃ¡rias, tarefas pendentes, receba notificaÃ§Ãµes cruciais e visualize anÃ¡lises comportamentais consolidadas por inteligÃªncia artificial para o desenvolvimento completo de seu filho.
           </p>
         </div>
 
         <div className="relative z-10 text-xs text-white/60">
-          © {new Date().getFullYear()} Pai&MãeIntegrado. Todos os direitos reservados.
+          Â© {new Date().getFullYear()} Pai&MÃ£eIntegrado. Todos os direitos reservados.
         </div>
       </section>
 
-      {/* Coluna da Direita: Formulários */}
+      {/* Coluna da Direita: FormulÃ¡rios */}
       <section className="lg:col-span-7 p-6 md:p-12 lg:p-16 flex flex-col justify-center items-center overflow-y-auto w-full">
         <div className="w-full max-w-[480px] flex flex-col gap-8">
           <div className="text-center lg:text-left">
@@ -472,7 +474,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
                 <GraduationCap className="w-5.5 h-5.5" />
               </div>
               <span className="font-display font-extrabold text-lg text-text-primary tracking-tight">
-                Pai&MãeIntegrado
+                Pai&MÃ£eIntegrado
               </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-display font-black text-text-primary leading-tight">
@@ -483,7 +485,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
             </p>
           </div>
 
-          {/* Abas para alternar formulários */}
+          {/* Abas para alternar formulÃ¡rios */}
           <div className="flex border-b border-border gap-2">
             <button
               onClick={() => setActiveTab("login")}
@@ -513,7 +515,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
                   : "border-transparent text-text-muted hover:text-text-primary"
               }`}
             >
-              Instalação (Admin)
+              InstalaÃ§Ã£o (Admin)
             </button>
           </div>
 
@@ -522,7 +524,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
               <Card title="Entrar na sua Conta">
                 <form onSubmit={handleLogin} className="flex flex-col gap-4">
                   <Input
-                    label="Endereço de E-mail"
+                    label="EndereÃ§o de E-mail"
                     type="email"
                     placeholder="Ex: seuemail@dominio.com"
                     value={loginEmail}
@@ -550,7 +552,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
               <Card title="Primeiro Acesso / Ativar Conta" subtitle="Registre a sua senha pessoal utilizando os dados fornecidos pela escola/administrador">
                 <form onSubmit={handleFirstAccess} className="flex flex-col gap-4">
                   <Input
-                    label="Endereço de E-mail"
+                    label="EndereÃ§o de E-mail"
                     type="email"
                     placeholder="Ex: joao@gmail.com"
                     value={firstAccessEmail}
@@ -559,15 +561,15 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
                     disabled={isFirstAccessLoading}
                   />
                   <Input
-                    label="Nome Completo (idêntico ao cadastrado)"
-                    placeholder="Ex: João da Silva"
+                    label="Nome Completo (idÃªntico ao cadastrado)"
+                    placeholder="Ex: JoÃ£o da Silva"
                     value={firstAccessName}
                     onChange={(e) => setFirstAccessName(e.target.value)}
                     required
                     disabled={isFirstAccessLoading}
                   />
                   <Input
-                    label="Nova Senha (mínimo 8 caracteres)"
+                    label="Nova Senha (mÃ­nimo 8 caracteres)"
                     type="password"
                     placeholder="Defina uma senha segura"
                     value={firstAccessPassword}
@@ -595,7 +597,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
                     disabled={isAdminLoading}
                   />
                   <Input
-                    label="Endereço de E-mail"
+                    label="EndereÃ§o de E-mail"
                     type="email"
                     placeholder="Ex: admin@escola.com"
                     value={adminEmail}
@@ -605,7 +607,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
                   />
                   <Input
                     label="CPF do Administrador"
-                    placeholder="Ex: 000.000.000-00 (apenas 11 números)"
+                    placeholder="Ex: 000.000.000-00 (apenas 11 nÃºmeros)"
                     value={adminDocument}
                     onChange={(e) => setAdminDocument(e.target.value)}
                     required
@@ -742,7 +744,7 @@ function DashboardPage({
         </ol>
       </div>
 
-      {/* Seletor da criança em foco */}
+      {/* Seletor da crianÃ§a em foco */}
       <ChildSelector
         childrenList={childrenList}
         selectedChildId={selectedChildId}
@@ -792,7 +794,7 @@ function DashboardPage({
         </div>
       )}
 
-      {/* Accordion para cadastrar Criança */}
+      {/* Accordion para cadastrar CrianÃ§a */}
       {showChildCreate && (
         <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
@@ -839,7 +841,7 @@ function DashboardPage({
         </div>
       )}
 
-      {/* Accordion para cadastrar Material Didático */}
+      {/* Accordion para cadastrar Material DidÃ¡tico */}
       {showPedagogyCreate && (
         <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
@@ -883,7 +885,7 @@ function DashboardPage({
                         if (window.confirm("Deseja realmente excluir este livro permanentemente?")) {
                           try {
                             await api(`/api/v1/pedagogy/materials/${m.id}`, { method: "DELETE" });
-                            notify("Livro excluído com sucesso!");
+                            notify("Livro excluÃ­do com sucesso!");
                             await loadBase();
                           } catch (err) {
                             notify(err instanceof Error ? err.message : "Erro ao excluir livro.", "error");
@@ -899,7 +901,7 @@ function DashboardPage({
         </div>
       )}
 
-      {/* Accordion para vincular Capítulos aos Livros */}
+      {/* Accordion para vincular CapÃ­tulos aos Livros */}
       {showPedagogyCreate && (
         <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
@@ -940,7 +942,7 @@ function DashboardPage({
           )}
         </div>
       )}
-      {/* Accordion para cadastrar Metodologia Pedagógica */}
+      {/* Accordion para cadastrar Metodologia PedagÃ³gica */}
       {showPedagogyCreate && (
         <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
@@ -989,7 +991,7 @@ function DashboardPage({
         </div>
       )}
 
-      {/* Accordion para cadastrar Usuários */}
+      {/* Accordion para cadastrar UsuÃ¡rios */}
       {showSchoolCreate && (
         <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
@@ -1009,17 +1011,17 @@ function DashboardPage({
                 userToEdit={userToEdit}
                 onCancelEdit={() => setUserToEdit(null)}
                 onSubmit={async (payload) => {
-                  await onSubmit("/api/v1/auth/users", payload, userToEdit ? "Usuário atualizado." : "Usuário cadastrado.");
+                  await onSubmit("/api/v1/auth/users", payload, userToEdit ? "UsuÃ¡rio atualizado." : "UsuÃ¡rio cadastrado.");
                   setUserToEdit(null);
                 }}
               />
 
               <div className="mt-4 pt-4 border-t border-border/80 flex flex-col gap-2 max-h-40 overflow-y-auto">
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Usuários Cadastrados ({usersList.length})</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">UsuÃ¡rios Cadastrados ({usersList.length})</span>
                 {usersList.map(u => (
                   <div key={u.id} className="flex justify-between items-center text-xs p-2 bg-background/45 rounded-lg border border-border/50">
                     <div>
-                      <span className={`${u.is_active !== false ? "text-text-primary" : "text-text-muted line-through"}`}>{u.name} ({u.role === "guardian" ? "Responsável" : u.role})</span>
+                      <span className={`${u.is_active !== false ? "text-text-primary" : "text-text-muted line-through"}`}>{u.name} ({u.role === "guardian" ? "ResponsÃ¡vel" : u.role})</span>
                       {u.is_active === false && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
                     </div>
                     <div className="flex gap-2">
@@ -1053,7 +1055,7 @@ function DashboardPage({
           {isLgpdExpanded && (
             <div className="p-4 border-t border-border bg-background/20 flex flex-col gap-3">
               <p className="text-[10px] text-text-muted leading-relaxed">
-                Em conformidade com a LGPD, você pode baixar seus dados ou solicitar a exclusão total do prontuário deste aluno.
+                Em conformidade com a LGPD, vocÃª pode baixar seus dados ou solicitar a exclusÃ£o total do prontuÃ¡rio deste aluno.
               </p>
               <div className="flex flex-col gap-2">
                 <Button
@@ -1067,7 +1069,7 @@ function DashboardPage({
                 </Button>
                 <Button
                   onClick={async () => {
-                    if (window.confirm("ATENÇÃO: Esta ação é irreversível. Todos os dados pedagógicos, rotinas, tarefas e histórico deste aluno serão excluídos permanentemente. Deseja continuar?")) {
+                    if (window.confirm("ATENÃ‡ÃƒO: Esta aÃ§Ã£o Ã© irreversÃ­vel. Todos os dados pedagÃ³gicos, rotinas, tarefas e histÃ³rico deste aluno serÃ£o excluÃ­dos permanentemente. Deseja continuar?")) {
                       try {
                         await api(`/api/v1/children/${selectedChildId}/forget-lgpd`, { method: "DELETE" });
                         notify("Todos os dados do aluno foram apagados definitivamente.");
@@ -1100,7 +1102,7 @@ function DashboardPage({
         />
       )}
       <AppShell user={user} onLogout={onLogout} sidebarContent={sidebarContent}>
-      {/* Seção superior de Métricas */}
+      {/* SeÃ§Ã£o superior de MÃ©tricas */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <MetricCard
           icon={<SchoolIcon className="w-5.5 h-5.5 text-primary" />}
@@ -1110,25 +1112,25 @@ function DashboardPage({
         />
         <MetricCard
           icon={<UserPlus className="w-5.5 h-5.5 text-secondary" />}
-          label="Crianças Cadastradas"
+          label="CrianÃ§as Cadastradas"
           value={childrenList.length}
           colorClass="bg-secondary/10"
         />
         <MetricCard
           icon={<Bell className="w-5.5 h-5.5 text-tertiary" />}
-          label="Notificações da Criança"
+          label="NotificaÃ§Ãµes da CrianÃ§a"
           value={notifications.length}
           colorClass="bg-tertiary/10"
         />
         <MetricCard
           icon={<ClipboardList className="w-5.5 h-5.5 text-error" />}
-          label="Tarefas da Criança"
+          label="Tarefas da CrianÃ§a"
           value={tasks.length}
           colorClass="bg-error/10"
         />
       </section>
 
-      {/* Conteúdo Principal com skeletons se carregando */}
+      {/* ConteÃºdo Principal com skeletons se carregando */}
       {isLoadingData ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <SkeletonList count={2} />
@@ -1136,7 +1138,7 @@ function DashboardPage({
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          {/* Navegação de Abas do Dashboard */}
+          {/* NavegaÃ§Ã£o de Abas do Dashboard */}
           <div className="flex border-b border-border gap-6 mb-2">
             <button
               onClick={() => setActiveDashboardTab("overview")}
@@ -1146,7 +1148,7 @@ function DashboardPage({
                   : "border-transparent text-text-muted hover:text-text-primary"
               }`}
             >
-              Visão Geral
+              VisÃ£o Geral
             </button>
             <button
               onClick={() => setActiveDashboardTab("metrics")}
@@ -1156,7 +1158,7 @@ function DashboardPage({
                   : "border-transparent text-text-muted hover:text-text-primary"
               }`}
             >
-              Relatórios & Métricas
+              RelatÃ³rios & MÃ©tricas
             </button>
           </div>
 
@@ -1320,3 +1322,5 @@ function MetricCard({ icon, label, value, colorClass }: MetricCardProps) {
     </Card>
   );
 }
+
+
