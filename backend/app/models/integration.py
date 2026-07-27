@@ -2,7 +2,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -146,8 +146,11 @@ class ClipEscolaAccount(IdMixin, TimestampMixin, Base):
     guardian_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, index=True)
 
-    # Cookie/estado de sessao do ClipEscola, criptografado (app.core.crypto)
-    session_cookie_encrypted: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    # Cookie/estado de sessao do ClipEscola, criptografado (app.core.crypto).
+    # Text (nao String limitado) porque o storage_state do Playwright
+    # (cookies + origins + localStorage, depois criptografado) facilmente
+    # ultrapassa milhares de caracteres.
+    session_cookie_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending_pairing")  # pending_pairing, active, needs_reauth
     qr_pairing_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
