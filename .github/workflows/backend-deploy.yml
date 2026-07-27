@@ -1,4 +1,4 @@
-name: Deploy Backend (Railway)
+name: Backend Tests (Railway path)
 
 on:
   push:
@@ -59,23 +59,7 @@ jobs:
       with:
         files: ./backend/coverage.xml
 
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Deploy to Railway
-      uses: ConductorOne/railway-action@v1
-      with:
-        token: ${{ secrets.RAILWAY_TOKEN }}
-        service: ${{ secrets.RAILWAY_BACKEND_SERVICE_ID }}
-      env:
-        DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
-        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-        GOOGLE_VISION_API_KEY: ${{ secrets.GOOGLE_VISION_API_KEY }}
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+  # O deploy real acontece pela integracao nativa do Railway com o GitHub
+  # (deploy automatico a cada push em main), entao nao precisamos de um
+  # job separado aqui - esse job usava ConductorOne/railway-action@v1, uma
+  # action que nao existe/nunca resolveu, e nunca funcionou.

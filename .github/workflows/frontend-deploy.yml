@@ -1,4 +1,4 @@
-name: Deploy Frontend (Vercel)
+name: Frontend Build Check
 
 on:
   push:
@@ -43,21 +43,7 @@ jobs:
         name: frontend-build
         path: frontend/dist
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Deploy to Vercel
-      uses: vercel/vercel-action@master
-      with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-        working-directory: frontend
-        vercel-args: '--prod'
-      env:
-        VITE_API_URL: ${{ secrets.VITE_API_URL }}
+  # O deploy real acontece pela integracao nativa do Vercel com o GitHub
+  # (deploy automatico a cada push em main), entao nao precisamos de um
+  # job separado aqui - esse job usava vercel/vercel-action@master, uma
+  # action que nao existe/nunca resolveu, e nunca funcionou.
