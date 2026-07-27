@@ -68,60 +68,106 @@ def _get_or_create_account(db: Session, guardian_id: UUID, child_id: UUID) -> Cl
     return account
 
 
-def start_pairing(db: Session, guardian_id: UUID, child_id: UUID) -> dict:
+# Pareamento por QR Code exige manter o MESMO navegador/aba aberto entre o
+# momento de gerar o QR e o momento de checar se o celular ja escaneou -
+# fechar e reabrir com o cookie salvo nao e suficiente (o ClipEscola nao
+# reconhece o pareamento se a sessao original ja foi encerrada). Por isso
+# usamos a API assincrona do Playwright (compativel com o loop de eventos
+# do FastAPI/uvicorn) e mantemos a pagina viva em memoria entre requisicoes,
+# em vez da API sincrona usada no restante deste modulo.
+_active_pairings: dict[str, dict] = {}
+_PAIRING_TTL_SECONDS = 300  # 5 minutos - depois disso descartamos a tentativa
+
+
+async def _close_pairing_session(account_key: str) -> None:
+    session = _active_pairings.pop(account_key, None)
+    if not session:
+        return
+    try:
+        await session["browser"].close()
+    except Exception:
+        logger.exception("Erro ao fechar sessao de pareamento ClipEscola (conta %s)", account_key)
+    try:
+        await session["playwright"].stop()
+    except Exception:
+        pass
+
+
+async def _cleanup_stale_pairings() -> None:
+    now = datetime.utcnow()
+    stale_keys = [
+        key for key, session in _active_pairings.items()
+        if (now - session["created_at"]).total_seconds() > _PAIRING_TTL_SECONDS
+    ]
+    for key in stale_keys:
+        await _close_pairing_session(key)
+
+
+async def start_pairing(db: Session, guardian_id: UUID, child_id: UUID) -> dict:
     """Abre uma sessao nova no ClipEscola e retorna o QR Code para o
-    responsavel escanear com o celular (app oficial dele)."""
-    from playwright.sync_api import sync_playwright
+    responsavel escanear com o celular (app oficial dele). O navegador fica
+    aberto em memoria ate o pareamento ser confirmado ou expirar."""
+    from playwright.async_api import async_playwright
 
     account = _get_or_create_account(db, guardian_id, child_id)
+    account_key = str(account.id)
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
-        page.goto(LOGIN_URL, wait_until="networkidle")
+    await _cleanup_stale_pairings()
+    await _close_pairing_session(account_key)  # descarta tentativa anterior pendente, se houver
 
-        qr_element = page.locator("img[src*='qrcode' i], canvas, svg").first
-        qr_bytes = qr_element.screenshot()
+    playwright = await async_playwright().start()
+    browser = await playwright.chromium.launch(headless=True)
+    context = await browser.new_context()
+    page = await context.new_page()
+    await page.goto(LOGIN_URL, wait_until="networkidle")
 
-        storage_state = context.storage_state()
-        browser.close()
+    qr_element = page.locator("img[src*='qrcode' i], canvas, svg").first
+    qr_bytes = await qr_element.screenshot()
 
-    _save_storage_state(account, storage_state)
+    _active_pairings[account_key] = {
+        "playwright": playwright,
+        "browser": browser,
+        "context": context,
+        "page": page,
+        "created_at": datetime.utcnow(),
+    }
+
     account.status = "pending_pairing"
     db.flush()
 
     return {
-        "account_id": str(account.id),
+        "account_id": account_key,
         "qr_image_base64": base64.b64encode(qr_bytes).decode(),
     }
 
 
-def check_pairing_status(db: Session, account: ClipEscolaAccount) -> str:
-    """Reabre a mesma sessao (mesmo cookie) para ver se o celular ja
-    escaneou o QR Code e autorizou o pareamento."""
-    from playwright.sync_api import sync_playwright
+async def check_pairing_status(db: Session, account: ClipEscolaAccount) -> str:
+    """Recarrega a MESMA pagina aberta no pareamento para ver se o celular
+    ja escaneou o QR Code e autorizou o acesso."""
+    account_key = str(account.id)
+    session = _active_pairings.get(account_key)
 
-    storage_state = _load_storage_state(account)
-    if not storage_state:
-        return "pending_pairing"
+    if not session:
+        # Sem navegador vivo em memoria (nunca pareou, ja pareou antes, ou o
+        # processo reiniciou) - mantem o status atual em vez de inventar um.
+        return account.status
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(storage_state=storage_state)
-        page = context.new_page()
-        page.goto(LOGIN_URL, wait_until="networkidle")
-
+    page = session["page"]
+    try:
+        await page.reload(wait_until="networkidle")
         paired = DASHBOARD_URL_FRAGMENT in page.url
+    except Exception:
+        logger.exception("Erro ao verificar pareamento ClipEscola (conta %s)", account_key)
+        paired = False
 
-        updated_state = context.storage_state()
-        browser.close()
-
-    _save_storage_state(account, updated_state)
-    account.status = "active" if paired else "pending_pairing"
     if paired:
+        storage_state = await session["context"].storage_state()
+        _save_storage_state(account, storage_state)
+        account.status = "active"
         account.last_synced_at = datetime.utcnow()
-    db.flush()
+        db.flush()
+        await _close_pairing_session(account_key)
+
     return account.status
 
 

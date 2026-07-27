@@ -62,26 +62,26 @@ def get_status(
 
 
 @router.post("/{child_id}/pair/start", response_model=ClipEscolaPairingResponse)
-def start_pairing(
+async def start_pairing(
     child_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
     ensure_child_access(db, current_user, child_id, manage_routine=True)
-    result = clip_escola_service.start_pairing(db, current_user.id, child_id)
+    result = await clip_escola_service.start_pairing(db, current_user.id, child_id)
     db.commit()
     return result
 
 
 @router.get("/{child_id}/pair/status", response_model=ClipEscolaStatusResponse)
-def get_pairing_status(
+async def get_pairing_status(
     child_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
     ensure_child_access(db, current_user, child_id, manage_routine=True)
     account = _get_account_or_404(db, current_user.id, child_id)
-    status_value = clip_escola_service.check_pairing_status(db, account)
+    status_value = await clip_escola_service.check_pairing_status(db, account)
     db.commit()
     return ClipEscolaStatusResponse(
         account_id=account.id,
