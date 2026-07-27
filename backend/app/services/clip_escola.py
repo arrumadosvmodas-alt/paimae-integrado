@@ -141,21 +141,20 @@ async def start_pairing(db: Session, guardian_id: UUID, child_id: UUID) -> dict:
     }
 
 
-# Cada reload da pagina de login troca o QR Code por um novo (confirmado
-# via teste direto) - por isso NAO recarregamos a cada poll do frontend
-# (a cada poucos segundos), o que trocaria o QR antes do usuario conseguir
-# escanea-lo. So recarregamos de tempos em tempos, dando uma janela real
-# para o scan, e devolvemos a imagem nova quando isso acontece.
-_RELOAD_THROTTLE_SECONDS = 25
+# A propria pagina de login faz polling via AJAX (POST repetido para a
+# mesma URL, padrao PrimeFaces p:poll - confirmado inspecionando o trafego
+# de rede real) para detectar quando o celular autoriza o pareamento, e se
+# redireciona sozinha quando isso acontece. Por isso NUNCA recarregamos
+# (page.reload/goto) enquanto aguardamos: um reload destroi esse mecanismo
+# de polling interno (reinicia a pagina do zero) e ainda troca o QR Code
+# por um novo (confirmado via teste direto). So observamos o estado atual
+# da mesma pagina, sempre aberta, deixando o JS dela fazer o trabalho.
 
 
 async def check_pairing_status(db: Session, account: ClipEscolaAccount) -> dict:
-    """Verifica se o celular ja escaneou e autorizou o pareamento.
-
-    Retorna {"status": ..., "qr_image_base64": <novo QR ou None>}. So
-    recarrega a pagina (o que troca o QR Code) esporadicamente, nunca a
-    cada chamada.
-    """
+    """Verifica se a propria pagina (mantida aberta, com seu polling AJAX
+    interno rodando) ja se redirecionou para o dashboard apos o celular
+    autorizar o pareamento. Nunca recarrega a pagina."""
     account_key = str(account.id)
     session = _active_pairings.get(account_key)
 
@@ -164,21 +163,9 @@ async def check_pairing_status(db: Session, account: ClipEscolaAccount) -> dict:
         # processo reiniciou) - mantem o status atual em vez de inventar um.
         return {"status": account.status, "qr_image_base64": None}
 
-    now = datetime.utcnow()
-    last_check = session.get("last_checked_at", session["created_at"])
-    if (now - last_check).total_seconds() < _RELOAD_THROTTLE_SECONDS:
-        return {"status": account.status, "qr_image_base64": None}
-
-    session["last_checked_at"] = now
     page = session["page"]
-    new_qr_image: str | None = None
     try:
-        await page.reload(wait_until="networkidle")
         paired = DASHBOARD_URL_FRAGMENT in page.url
-        if not paired:
-            qr_element = page.locator("img[src*='qrcode' i], canvas, svg").first
-            qr_bytes = await qr_element.screenshot()
-            new_qr_image = base64.b64encode(qr_bytes).decode()
     except Exception:
         logger.exception("Erro ao verificar pareamento ClipEscola (conta %s)", account_key)
         paired = False
@@ -191,7 +178,7 @@ async def check_pairing_status(db: Session, account: ClipEscolaAccount) -> dict:
         db.flush()
         await _close_pairing_session(account_key)
 
-    return {"status": account.status, "qr_image_base64": new_qr_image}
+    return {"status": account.status, "qr_image_base64": None}
 
 
 def _extract_category_messages(page, category_name: str) -> list[str]:
