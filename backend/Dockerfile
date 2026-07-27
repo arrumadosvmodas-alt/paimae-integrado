@@ -16,6 +16,10 @@ COPY . /app
 # Instala a aplicação em modo de produção (sem editable -e e sem pacotes dev)
 RUN pip install --no-cache-dir .
 
+# Baixa o navegador Chromium + dependencias de sistema para o Playwright
+# (usado pela integracao ClipEscola, que nao tem API oficial)
+RUN playwright install --with-deps chromium
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
