@@ -36,11 +36,15 @@ def test_lookup_isbn_endpoint_success(client: TestClient):
 
 
 def test_lookup_isbn_endpoint_not_found(client: TestClient):
+    # As 3 APIs externas (BrasilAPI, Open Library, Google Books) devem "falhar"
+    # para exercitar o fallback ate o 404 - sem isso, o teste fica dependente
+    # do comportamento real (e instavel) dessas APIs para um ISBN inventado.
     app.dependency_overrides[get_current_user] = lambda: FakeUser()
     try:
-        response = client.get("/api/v1/pedagogy/isbn/9780000000000", headers={"Authorization": "Bearer fake"})
-        assert response.status_code == 404
-        assert "ISBN não localizado" in response.json()["detail"]
+        with patch("urllib.request.urlopen", side_effect=Exception("sem rede no teste")):
+            response = client.get("/api/v1/pedagogy/isbn/9780000000000", headers={"Authorization": "Bearer fake"})
+            assert response.status_code == 404
+            assert "ISBN não localizado" in response.json()["detail"]
     finally:
         app.dependency_overrides.pop(get_current_user, None)
 
@@ -65,9 +69,16 @@ def test_lookup_isbn_real_api_mocked(client: TestClient):
     mock_response.read.return_value = json.dumps(mock_json).encode("utf-8")
     mock_response.__enter__.return_value = mock_response
 
+    def fake_urlopen(request, timeout=None):
+        # O endpoint tenta BrasilAPI e Open Library antes do Google Books -
+        # so a chamada ao Google Books deve "encontrar" o livro mockado.
+        if "googleapis.com" in request.full_url:
+            return mock_response
+        raise Exception("nao encontrado nesta API mockada")
+
     app.dependency_overrides[get_current_user] = lambda: FakeUser()
     try:
-        with patch("urllib.request.urlopen", return_value=mock_response):
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
             response = client.get("/api/v1/pedagogy/isbn/9780132350884", headers={"Authorization": "Bearer fake"})
             assert response.status_code == 200
             data = response.json()
