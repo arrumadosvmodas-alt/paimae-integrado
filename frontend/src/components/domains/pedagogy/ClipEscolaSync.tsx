@@ -161,7 +161,14 @@ export function ClipEscolaSync({ childId, notify }: ClipEscolaSyncProps) {
               className="w-48 h-48 rounded-lg border border-border"
             />
           ) : (
-            <p className="text-xs text-text-muted">Aguardando pareamento...</p>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs text-text-muted">
+                Nenhum QR Code ativo no momento (a tentativa anterior pode ter expirado).
+              </p>
+              <Button onClick={handleStartPairing} isLoading={loading} disabled={!childId}>
+                Gerar novo QR Code
+              </Button>
+            </div>
           )}
         </div>
       )}
