@@ -48,7 +48,7 @@ jobs:
 
     - name: Run tests
       env:
-        DATABASE_URL: postgresql://paimae:paimae@localhost:5432/paimae_test
+        DATABASE_URL: postgresql+psycopg://paimae:paimae@localhost:5432/paimae_test
         JWT_SECRET_KEY: test-secret
       run: |
         cd backend
