@@ -33,7 +33,7 @@ export function ThemeProgressChart({ childId }: ThemeProgressChartProps) {
   useEffect(() => {
     const loadThemeData = async () => {
       try {
-        const metrics = await api<LearningMetrics>(`/api/v1/learning/metrics?child_id=${childId}`);
+        const metrics = await api<LearningMetrics>(`/api/v1/learning/children/${childId}/metrics`);
 
         const themes: ThemeData[] = [];
 

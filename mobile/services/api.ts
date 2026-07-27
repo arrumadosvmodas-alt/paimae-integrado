@@ -87,9 +87,11 @@ class ApiService {
   // Auth
   async login(email: string, password: string): Promise<AuthResponse> {
     try {
-      const response = await this.api.post<AuthResponse>('/api/v1/auth/login', {
-        email,
-        password,
+      const form = new URLSearchParams();
+      form.append('username', email);
+      form.append('password', password);
+      const response = await this.api.post<AuthResponse>('/api/v1/auth/login', form, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       await this.setToken(response.data.access_token);
       return response.data;
@@ -129,7 +131,7 @@ class ApiService {
   // Learning Analytics
   async getLearningMetrics(childId: string) {
     try {
-      const response = await this.api.get(`/api/v1/learning/metrics?child_id=${childId}`);
+      const response = await this.api.get(`/api/v1/learning/children/${childId}/metrics`);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -139,7 +141,7 @@ class ApiService {
   async getLearningHistory(childId: string, limit: number = 10) {
     try {
       const response = await this.api.get(
-        `/api/v1/learning/history?child_id=${childId}&limit=${limit}`
+        `/api/v1/learning/children/${childId}/learning-history?limit=${limit}`
       );
       return response.data;
     } catch (error) {
@@ -161,7 +163,7 @@ class ApiService {
 
   async getPendingInteractions(limit: number = 5) {
     try {
-      const response = await this.api.get(`/api/v1/interactions/pending?limit=${limit}`);
+      const response = await this.api.get(`/api/v1/orchestration/interactions/pending?limit=${limit}`);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -175,7 +177,7 @@ class ApiService {
   ) {
     try {
       const response = await this.api.post(
-        `/api/v1/interactions/${interactionId}/responses`,
+        `/api/v1/study-plans/interactions/${interactionId}/responses`,
         {
           responder_type: 'child',
           response_text: responseText,
@@ -211,10 +213,10 @@ class ApiService {
   // Recommendations
   async getRecommendation(childId: string, availableThemes: string[] = []) {
     try {
-      const response = await this.api.post('/api/v1/learning/recommendations', {
-        child_id: childId,
-        available_themes: availableThemes,
-      });
+      const response = await this.api.post(
+        `/api/v1/learning/children/${childId}/adaptive-recommendation`,
+        availableThemes
+      );
       return response.data;
     } catch (error) {
       throw this.handleError(error);

@@ -30,7 +30,7 @@ export function ComparisonChart({ childId }: ComparisonChartProps) {
   useEffect(() => {
     const loadComparisonData = async () => {
       try {
-        const metrics = await api<LearningMetrics>(`/api/v1/learning/metrics?child_id=${childId}`);
+        const metrics = await api<LearningMetrics>(`/api/v1/learning/children/${childId}/metrics`);
 
         const comparisonData = [
           {

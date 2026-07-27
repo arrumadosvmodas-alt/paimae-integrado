@@ -11,18 +11,40 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.pedagogy import StudyPlan, DailyStudyPlanItem, Interaction
 from app.models.child import Child
+from app.models.child_guardian import ChildGuardian
 from app.models.routine import RoutineItem
 from app.models.notification import Notification
+from app.models.integration import ClipEscolaAccount
 from app.db.session import SessionLocal
 from app.services.notifications_service import NotificationService
 from app.services.llm import get_llm_service
 from app.services.schedule_generation import generate_daily_activities_for_date
+from app.services import clip_escola as clip_escola_service
 
 logger = logging.getLogger(__name__)
 
 scheduler = None
 notification_service = NotificationService()
 llm_service = get_llm_service(settings.google_gemini_api_key)
+
+def _resolve_recipient_contact(db: Session, child: Child, recipient_type: str) -> tuple[str | None, str | None]:
+    if recipient_type == "child":
+        return None, None
+
+    link = db.scalar(
+        select(ChildGuardian)
+        .where(
+            ChildGuardian.child_id == child.id,
+            ChildGuardian.can_view.is_(True),
+        )
+        .order_by(ChildGuardian.created_at)
+    )
+    if not link or not link.guardian:
+        return None, None
+
+    email = link.guardian.email
+    phone = link.guardian.phone or (link.guardian.guardian_profile.phone if link.guardian.guardian_profile else None)
+    return email, phone
 
 
 def initialize_scheduler():
@@ -42,6 +64,13 @@ def initialize_scheduler():
             trigger=CronTrigger(hour=0, minute=0),  # Meia-noite
             id="generate_daily_items",
             name="Generate daily study items",
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            job_sync_clip_escola,
+            trigger=CronTrigger(hour="*/3"),  # A cada 3 horas
+            id="sync_clip_escola",
+            name="Sync ClipEscola agenda accounts",
             replace_existing=True,
         )
         scheduler.start()
@@ -94,12 +123,13 @@ def job_dispatch_scheduled_interactions():
                     continue
 
                 # Enviar notificação
+                recipient_email, recipient_phone = _resolve_recipient_contact(db, child, interaction.recipient_type)
                 result = notification_service.send_interaction(
                     child_name=child.full_name,
                     recipient_type=interaction.recipient_type,
                     message=interaction.message,
-                    recipient_email=None,  # Seria preenchido do modelo Child/Guardian
-                    recipient_phone=None,
+                    recipient_email=recipient_email,
+                    recipient_phone=recipient_phone,
                 )
 
                 if result["status"] == "success":
@@ -118,7 +148,7 @@ def job_dispatch_scheduled_interactions():
                     db.add(notification)
                     logger.info(f"✅ Interação enviada: {interaction.id}")
                 else:
-                    logger.error(f"❌ Erro ao enviar interação {interaction.id}: {result.get('error')}")
+                    logger.error(f"❌ Erro ao enviar interação {interaction.id}: {result.get('message') or result.get('error')}")
 
             except Exception as e:
                 logger.error(f"❌ Erro ao processar interação {interaction.id}: {str(e)}")
@@ -238,6 +268,73 @@ def job_generate_daily_study_items():
         db.close()
 
 
+def job_sync_clip_escola():
+    """
+    Job que sincroniza as contas ClipEscola dos responsaveis.
+
+    Executado a cada 3 horas para:
+    1. Manter a sessao (pareada via QR Code) viva, ja que nao ha token de API duradouro
+    2. Ler novos recados da Agenda e alimentar o modulo pedagogico (SchoolSchedule)
+    3. Notificar o responsavel quando a sessao expirar e precisar de novo pareamento
+    """
+    db = SessionLocal()
+    try:
+        logger.info("🔄 [Job] Iniciando sincronização de contas ClipEscola")
+
+        accounts = db.scalars(
+            select(ClipEscolaAccount).where(ClipEscolaAccount.status == "active")
+        ).all()
+
+        logger.info(f"📋 Encontradas {len(accounts)} contas ClipEscola ativas")
+
+        for account in accounts:
+            try:
+                result = clip_escola_service.sync_agenda(db, account)
+                db.commit()
+
+                if result.get("status") == "needs_reauth":
+                    _notify_clip_escola_reauth(db, account)
+                else:
+                    logger.info(
+                        f"✅ ClipEscola conta {account.id}: "
+                        f"{result.get('schedules_created', 0)} cronogramas criados"
+                    )
+            except Exception as e:
+                logger.error(f"❌ Erro ao sincronizar conta ClipEscola {account.id}: {str(e)}")
+                db.rollback()
+                continue
+
+        logger.info("✅ Job concluído: sincronização de contas ClipEscola")
+
+    except Exception as e:
+        logger.error(f"❌ Erro no job_sync_clip_escola: {str(e)}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+def _notify_clip_escola_reauth(db: Session, account: ClipEscolaAccount) -> None:
+    from app.models.user import User
+
+    guardian = db.get(User, account.guardian_id)
+    child = db.get(Child, account.child_id)
+    if not guardian or not child:
+        return
+
+    notification_service.send_interaction(
+        child_name=child.full_name,
+        recipient_type="parent",
+        message=(
+            f"Sua sessão do ClipEscola para {child.full_name} expirou. "
+            "Abra o app e escaneie o QR Code novamente para continuar recebendo "
+            "a agenda escolar automaticamente."
+        ),
+        recipient_email=guardian.email,
+        recipient_phone=guardian.phone,
+    )
+    logger.info(f"📧 Notificação de re-pareamento ClipEscola enviada para {guardian.email}")
+
+
 def _get_shift_time(shift: str) -> str:
     """Retorna hora típica do turno."""
     shift_lower = shift.lower()
@@ -262,12 +359,14 @@ def manually_dispatch_interaction(db: Session, interaction_id: UUID) -> dict:
         if not child:
             return {"status": "error", "message": "Criança não encontrada"}
 
+        recipient_email, recipient_phone = _resolve_recipient_contact(db, child, interaction.recipient_type)
+
         result = notification_service.send_interaction(
             child_name=child.full_name,
             recipient_type=interaction.recipient_type,
             message=interaction.message,
-            recipient_email=None,
-            recipient_phone=None,
+            recipient_email=recipient_email,
+            recipient_phone=recipient_phone,
         )
 
         if result["status"] == "success":

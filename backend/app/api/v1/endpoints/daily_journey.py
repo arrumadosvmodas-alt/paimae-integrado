@@ -1,4 +1,4 @@
-﻿from datetime import date
+from datetime import date
 from typing import Annotated
 from uuid import UUID
 
@@ -22,7 +22,7 @@ from app.schemas.pedagogy import (
 )
 from app.services.audit import record_audit
 from app.services.daily_journey import acknowledge_daily_session, get_or_create_daily_journey, upsert_attendance
-from app.services.permissions import ensure_child_access
+from app.services.permissions import ensure_child_access, ensure_school_staff
 
 router = APIRouter()
 
@@ -67,6 +67,7 @@ def save_attendance(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
+    ensure_school_staff(current_user)
     child = ensure_child_access(db, current_user, payload.child_id)
     record = upsert_attendance(db, payload.child_id, payload.date, payload.status, payload.reason, payload.notes)
     record_audit(db, actor=current_user, action="daily_journey.attendance_upsert", entity_type="attendance_record", entity_id=record.id, school_id=child.school_id)
@@ -81,6 +82,7 @@ def create_grade(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
+    ensure_school_staff(current_user)
     child = ensure_child_access(db, current_user, payload.child_id)
     if str(child.school_id) != str(payload.school_id):
         raise HTTPException(status_code=400, detail="Crianca nao pertence a escola informada.")

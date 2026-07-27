@@ -107,7 +107,8 @@ export function PedagogicalMethodologyForm({
 
   return (
     <Card 
-      title={methodologyToEdit ? "Editar Metodologia" : "Nova Metodologia"} 
+      title={methodologyToEdit ? "Editar Metodologia da Escola" : "Metodologia da Escola"} 
+      subtitle="Proposta pedagógica vinculada ao cadastro do colégio"
       icon={<GraduationCap className="w-5 h-5 text-primary" />}
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -133,7 +134,7 @@ export function PedagogicalMethodologyForm({
 
         <div>
           <label className="block text-xs font-bold text-text-primary uppercase tracking-wider mb-1.5">
-            Metodologia PedagÃ³gica (Reconhecida MEC) *
+            Metodologia pedagógica da escola *
           </label>
           <select
             value={methodologySelect}
@@ -151,8 +152,8 @@ export function PedagogicalMethodologyForm({
 
         {methodologySelect === "Outra" && (
           <Input
-            label="Especifique a Metodologia *"
-            placeholder="Ex: Metodologia Ativa Personalizada"
+            label="Especifique a metodologia da escola *"
+            placeholder="Ex: Metodologia ativa personalizada do colégio"
             value={customMethodology}
             onChange={(e) => setCustomMethodology(e.target.value)}
             required
@@ -161,8 +162,8 @@ export function PedagogicalMethodologyForm({
         )}
 
         <Textarea
-          label="DescriÃ§Ã£o"
-          placeholder="Ex: Foco na autonomia e liberdade com limites..."
+          label="Descrição da proposta pedagógica"
+          placeholder="Ex: Como o colégio organiza aprendizagem, avaliação e participação da família..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           disabled={isLoading}
@@ -181,7 +182,7 @@ export function PedagogicalMethodologyForm({
             </Button>
           )}
           <Button type="submit" isLoading={isLoading} className="flex-1">
-            {methodologyToEdit ? "Salvar AlteraÃ§Ãµes" : "Cadastrar Metodologia"}
+            {methodologyToEdit ? "Salvar Alterações" : "Salvar Metodologia da Escola"}
           </Button>
         </div>
       </form>

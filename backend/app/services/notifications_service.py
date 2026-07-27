@@ -39,7 +39,11 @@ class NotificationService:
         try:
             if not recipient_email and not recipient_phone:
                 logger.warning(f"Nenhum canal de contato disponível para {child_name}")
-                return self._simulate_send(child_name, recipient_type, message)
+                return {
+                    "status": "skipped",
+                    "message": "Nenhum canal de contato disponivel",
+                    "channels": [],
+                }
 
             results = []
 
@@ -61,15 +65,16 @@ class NotificationService:
                 )
                 results.append(sms_result)
 
-            # Se todos os canais falharam
-            if all(r["status"] == "failed" for r in results):
+            # Somente canais reais contam como entrega.
+            delivered = [r for r in results if r["status"] == "success" and not r.get("simulated")]
+            if not delivered:
                 return {
                     "status": "failed",
-                    "message": "Falha ao enviar por todos os canais",
+                    "message": "Falha ao enviar por canais reais",
                     "channels": results,
                 }
 
-            # Se pelo menos um sucesso
+            # Se pelo menos um sucesso real
             return {
                 "status": "success",
                 "message": "Interação enviada com sucesso",

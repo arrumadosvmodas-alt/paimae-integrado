@@ -32,7 +32,7 @@ export function ProgressChart({ childId, days = 30 }: ProgressChartProps) {
   useEffect(() => {
     const loadProgressData = async () => {
       try {
-        const history = await api<any[]>(`/api/v1/learning/history?child_id=${childId}&limit=${days}`);
+        const history = await api<any[]>(`/api/v1/learning/children/${childId}/learning-history?limit=${days}`);
 
         const progressData = history
           .sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime())

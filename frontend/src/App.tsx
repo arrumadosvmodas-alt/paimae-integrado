@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { Bell, BookOpen, ClipboardList, Edit3, GraduationCap, Plus, Sparkles, UserPlus, School as SchoolIcon, LayoutDashboard, ChevronDown, ChevronUp, Users, Bookmark, Shield, Download, Trash2, Power, Workflow } from "lucide-react";
 
@@ -17,7 +17,7 @@ import { Toast, ToastType } from "./components/ui/Toast";
 import { ThemeProvider, useTheme } from "./components/layout/ThemeContext";
 import { AppShell } from "./components/layout/AppShell";
 
-// Componentes de DomÃ­nio
+// Componentes de Domínio
 import { SchoolCreateForm } from "./components/domains/school/SchoolCreateForm";
 import { ChildCreateForm } from "./components/domains/child/ChildCreateForm";
 import { ChildSelector } from "./components/domains/child/ChildSelector";
@@ -30,7 +30,7 @@ import { NotificationList } from "./components/domains/notification/Notification
 import { EvolutionEventCreateForm } from "./components/domains/evolution/EvolutionEventCreateForm";
 import { EvolutionSummary } from "./components/domains/evolution/EvolutionSummary";
 
-// MÃ³dulo PedagÃ³gico
+// Módulo Pedagógico
 import { PedagogicalMaterialForm } from "./components/domains/pedagogy/PedagogicalMaterialForm";
 import { PedagogicalMaterialItemForm } from "./components/domains/pedagogy/PedagogicalMaterialItemForm";
 import { PedagogicalMaterialList } from "./components/domains/pedagogy/PedagogicalMaterialList";
@@ -41,13 +41,14 @@ import { DailyRecordList } from "./components/domains/pedagogy/DailyRecordList";
 import { FamilyInteractions } from "./components/domains/pedagogy/FamilyInteractions";
 import { PedagogicalMethodologyForm } from "./components/domains/pedagogy/PedagogicalMethodologyForm";
 import { SchoolScheduleManager } from "./components/domains/pedagogy/SchoolScheduleManager";
+import { ClipEscolaSync } from "./components/domains/pedagogy/ClipEscolaSync";
 
-// PÃ¡ginas Fase F
+// Páginas Fase F
 import { TeacherDashboard } from "./pages/TeacherDashboard";
 import { ParentDashboard } from "./pages/ParentDashboard";
 import { ChildInterface } from "./pages/ChildInterface";
 
-// PÃ¡gina Fase G
+// Página Fase G
 import { AnalyticsDashboard } from "./pages/AnalyticsDashboard";
 
 export function App() {
@@ -157,9 +158,9 @@ function AppRoutes() {
         setMethodologies([]);
       }
 
-      setSummary(""); // Limpa o resumo de IA da crianÃ§a anterior
+      setSummary(""); // Limpa o resumo de IA da criança anterior
     } catch (error) {
-      notify(error instanceof Error ? error.message : "Erro ao carregar dados da crianÃ§a.", "error");
+      notify(error instanceof Error ? error.message : "Erro ao carregar dados da criança.", "error");
     }
   }
 
@@ -184,7 +185,7 @@ function AppRoutes() {
     setTokenState(null);
     setUser(null);
     navigate("/login");
-    notify("VocÃª saiu do sistema.");
+    notify("Você saiu do sistema.");
   };
 
   const handleLoginSubmit = async (tokenString: string) => {
@@ -220,25 +221,25 @@ function AppRoutes() {
   }
 
   async function handleDeleteUser(id: string) {
-    if (!window.confirm("Deseja realmente excluir este usuÃ¡rio permanentemente?")) return;
+    if (!window.confirm("Deseja realmente excluir este usuário permanentemente?")) return;
     try {
       await api(`/api/v1/auth/users/${id}`, { method: "DELETE" });
-      notify("UsuÃ¡rio excluÃ­do com sucesso.");
+      notify("Usuário excluído com sucesso.");
       await loadBase();
     } catch (error) {
-      notify(error instanceof Error ? error.message : "Erro ao excluir usuÃ¡rio.", "error");
+      notify(error instanceof Error ? error.message : "Erro ao excluir usuário.", "error");
     }
   }
 
   async function handleCompleteNotification(id: string) {
     try {
       await api(`/api/v1/notifications/${id}/complete`, { method: "POST" });
-      notify("NotificaÃ§Ã£o concluÃ­da.");
+      notify("Notificação concluída.");
       if (selectedChildId) {
         await loadChildData(selectedChildId);
       }
     } catch (error) {
-      notify(error instanceof Error ? error.message : "Erro ao concluir notificaÃ§Ã£o.", "error");
+      notify(error instanceof Error ? error.message : "Erro ao concluir notificação.", "error");
     }
   }
 
@@ -418,7 +419,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
           password: firstAccessPassword.trim(),
         }),
       });
-      notify(response.message || "Cadastro realizado! FaÃ§a o login.");
+      notify(response.message || "Cadastro realizado! Faça o login.");
       setFirstAccessEmail("");
       setFirstAccessName("");
       setFirstAccessPassword("");
@@ -434,7 +435,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
     <main className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-background transition-colors duration-200">
       {/* Coluna da Esquerda: Ilustrativa Premium */}
       <section className="lg:col-span-5 bg-gradient-to-br from-primary to-indigo-700 text-white p-8 md:p-12 flex flex-col justify-between relative overflow-hidden hidden lg:flex">
-        {/* Elemento de iluminaÃ§Ã£o decorativo */}
+        {/* Elemento de iluminação decorativo */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full blur-[80px] -mr-40 -mt-40 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-black/10 rounded-full blur-[60px] -ml-20 -mb-20 pointer-events-none" />
 
@@ -443,7 +444,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
             <GraduationCap className="w-6 h-6" />
           </div>
           <span className="font-display font-extrabold text-xl tracking-tight">
-            Pai&MÃ£eIntegrado
+            Pai&MãeIntegrado
           </span>
         </div>
 
@@ -455,16 +456,16 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
             Sintonia perfeita entre a escola e o lar.
           </h2>
           <p className="text-sm md:text-base text-white/80 leading-relaxed max-w-md">
-            Acompanhe rotinas diÃ¡rias, tarefas pendentes, receba notificaÃ§Ãµes cruciais e visualize anÃ¡lises comportamentais consolidadas por inteligÃªncia artificial para o desenvolvimento completo de seu filho.
+            Acompanhe rotinas diárias, tarefas pendentes, receba notificações cruciais e visualize análises comportamentais consolidadas por inteligência artificial para o desenvolvimento completo de seu filho.
           </p>
         </div>
 
         <div className="relative z-10 text-xs text-white/60">
-          Â© {new Date().getFullYear()} Pai&MÃ£eIntegrado. Todos os direitos reservados.
+          © {new Date().getFullYear()} Pai&MãeIntegrado. Todos os direitos reservados.
         </div>
       </section>
 
-      {/* Coluna da Direita: FormulÃ¡rios */}
+      {/* Coluna da Direita: Formulários */}
       <section className="lg:col-span-7 p-6 md:p-12 lg:p-16 flex flex-col justify-center items-center overflow-y-auto w-full">
         <div className="w-full max-w-[480px] flex flex-col gap-8">
           <div className="text-center lg:text-left">
@@ -474,7 +475,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
                 <GraduationCap className="w-5.5 h-5.5" />
               </div>
               <span className="font-display font-extrabold text-lg text-text-primary tracking-tight">
-                Pai&MÃ£eIntegrado
+                Pai&MãeIntegrado
               </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-display font-black text-text-primary leading-tight">
@@ -485,7 +486,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
             </p>
           </div>
 
-          {/* Abas para alternar formulÃ¡rios */}
+          {/* Abas para alternar formulários */}
           <div className="flex border-b border-border gap-2">
             <button
               onClick={() => setActiveTab("login")}
@@ -515,7 +516,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
                   : "border-transparent text-text-muted hover:text-text-primary"
               }`}
             >
-              InstalaÃ§Ã£o (Admin)
+              Instalação (Admin)
             </button>
           </div>
 
@@ -524,7 +525,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
               <Card title="Entrar na sua Conta">
                 <form onSubmit={handleLogin} className="flex flex-col gap-4">
                   <Input
-                    label="EndereÃ§o de E-mail"
+                    label="Endereço de E-mail"
                     type="email"
                     placeholder="Ex: seuemail@dominio.com"
                     value={loginEmail}
@@ -552,7 +553,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
               <Card title="Primeiro Acesso / Ativar Conta" subtitle="Registre a sua senha pessoal utilizando os dados fornecidos pela escola/administrador">
                 <form onSubmit={handleFirstAccess} className="flex flex-col gap-4">
                   <Input
-                    label="EndereÃ§o de E-mail"
+                    label="Endereço de E-mail"
                     type="email"
                     placeholder="Ex: joao@gmail.com"
                     value={firstAccessEmail}
@@ -561,15 +562,15 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
                     disabled={isFirstAccessLoading}
                   />
                   <Input
-                    label="Nome Completo (idÃªntico ao cadastrado)"
-                    placeholder="Ex: JoÃ£o da Silva"
+                    label="Nome Completo (idêntico ao cadastrado)"
+                    placeholder="Ex: João da Silva"
                     value={firstAccessName}
                     onChange={(e) => setFirstAccessName(e.target.value)}
                     required
                     disabled={isFirstAccessLoading}
                   />
                   <Input
-                    label="Nova Senha (mÃ­nimo 8 caracteres)"
+                    label="Nova Senha (mínimo 8 caracteres)"
                     type="password"
                     placeholder="Defina uma senha segura"
                     value={firstAccessPassword}
@@ -597,7 +598,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
                     disabled={isAdminLoading}
                   />
                   <Input
-                    label="EndereÃ§o de E-mail"
+                    label="Endereço de E-mail"
                     type="email"
                     placeholder="Ex: admin@escola.com"
                     value={adminEmail}
@@ -607,7 +608,7 @@ function LoginPage({ onLoginSuccess, notify }: LoginPageProps) {
                   />
                   <Input
                     label="CPF do Administrador"
-                    placeholder="Ex: 000.000.000-00 (apenas 11 nÃºmeros)"
+                    placeholder="Ex: 000.000.000-00 (apenas 11 números)"
                     value={adminDocument}
                     onChange={(e) => setAdminDocument(e.target.value)}
                     required
@@ -692,7 +693,6 @@ function DashboardPage({
   const [isChildrenExpanded, setIsChildrenExpanded] = useState(false);
   const [isPedagogyExpanded, setIsPedagogyExpanded] = useState(false);
   const [isPedagogyItemExpanded, setIsPedagogyItemExpanded] = useState(false);
-  const [isMethodologyExpanded, setIsMethodologyExpanded] = useState(false);
   const [isUsersExpanded, setIsUsersExpanded] = useState(false);
   const [activeDashboardTab, setActiveDashboardTab] = useState<"overview" | "metrics">("overview");
   const [isLgpdExpanded, setIsLgpdExpanded] = useState(false);
@@ -717,7 +717,7 @@ function DashboardPage({
   }, [materialToEdit]);
 
   useEffect(() => {
-    if (methodologyToEdit) setIsMethodologyExpanded(true);
+    if (methodologyToEdit) setIsSchoolsExpanded(true);
   }, [methodologyToEdit]);
 
   useEffect(() => {
@@ -737,14 +737,13 @@ function DashboardPage({
         <ol className="space-y-1 list-decimal list-inside">
           <li>Responsavel</li>
           <li>Crianca</li>
-          <li>Escola</li>
-          <li>Metodologia</li>
+          <li>Escola e metodologia</li>
           <li>Livros</li>
           <li>Capitulos</li>
         </ol>
       </div>
 
-      {/* Seletor da crianÃ§a em foco */}
+      {/* Seletor da criança em foco */}
       <ChildSelector
         childrenList={childrenList}
         selectedChildId={selectedChildId}
@@ -789,12 +788,52 @@ function DashboardPage({
                   </div>
                 ))}
               </div>
+
+              <div className="mt-5 pt-5 border-t border-border/80">
+                <div className="mb-3">
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Metodologia vinculada � escola</span>
+                  <p className="text-xs text-text-muted mt-1">Defina aqui a proposta pedag�gica do col�gio. Ela ser� usada nos livros, cronogramas e intera��es vinculados � escola.</p>
+                </div>
+                <PedagogicalMethodologyForm
+                  schoolId={schoolToEdit?.id}
+                  schools={schools}
+                  methodologyToEdit={methodologyToEdit}
+                  onCancelEdit={() => setMethodologyToEdit(null)}
+                  onSubmit={async (payload) => {
+                    await onSubmit("/api/v1/pedagogy/methodologies", payload, methodologyToEdit ? "Metodologia da escola atualizada." : "Metodologia da escola cadastrada.");
+                    setMethodologyToEdit(null);
+                  }}
+                  notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
+                />
+
+                <div className="mt-4 pt-4 border-t border-border/80 flex flex-col gap-2 max-h-40 overflow-y-auto">
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Metodologias por Escola ({methodologies.length})</span>
+                  {methodologies.map(m => {
+                    const schoolName = schools.find(s => s.id === m.school_id)?.name || "Escola n�o localizada";
+                    return (
+                      <div key={m.id} className="flex justify-between items-center text-xs p-2 bg-background/45 rounded-lg border border-border/50">
+                        <div>
+                          <span className={`${m.is_active !== false ? "text-text-primary" : "text-text-muted line-through"}`}>{m.name}</span>
+                          <span className="ml-2 text-[10px] text-text-muted">{schoolName}</span>
+                          {m.is_active === false && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => setMethodologyToEdit(m)} className="text-primary hover:underline font-semibold" title="Editar" aria-label="Editar"><Edit3 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => onToggleActive("/api/v1/pedagogy/methodologies", m.id, m.is_active !== false)} className={`${m.is_active !== false ? "text-error" : "text-ok"} hover:underline font-semibold`}>
+                            {m.is_active !== false ? "Inativar" : "Ativar"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Accordion para cadastrar CrianÃ§a */}
+      {/* Accordion para cadastrar Criança */}
       {showChildCreate && (
         <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
@@ -841,7 +880,7 @@ function DashboardPage({
         </div>
       )}
 
-      {/* Accordion para cadastrar Material DidÃ¡tico */}
+      {/* Accordion para cadastrar Material Didático */}
       {showPedagogyCreate && (
         <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
@@ -885,7 +924,7 @@ function DashboardPage({
                         if (window.confirm("Deseja realmente excluir este livro permanentemente?")) {
                           try {
                             await api(`/api/v1/pedagogy/materials/${m.id}`, { method: "DELETE" });
-                            notify("Livro excluÃ­do com sucesso!");
+                            notify("Livro excluído com sucesso!");
                             await loadBase();
                           } catch (err) {
                             notify(err instanceof Error ? err.message : "Erro ao excluir livro.", "error");
@@ -901,7 +940,7 @@ function DashboardPage({
         </div>
       )}
 
-      {/* Accordion para vincular CapÃ­tulos aos Livros */}
+      {/* Accordion para vincular Capítulos aos Livros */}
       {showPedagogyCreate && (
         <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
@@ -942,56 +981,7 @@ function DashboardPage({
           )}
         </div>
       )}
-      {/* Accordion para cadastrar Metodologia PedagÃ³gica */}
-      {showPedagogyCreate && (
-        <div className="border border-border rounded-2xl overflow-hidden bg-surface">
-          <button
-            onClick={() => setIsMethodologyExpanded(!isMethodologyExpanded)}
-            className="w-full px-5 py-4 flex items-center justify-between text-sm font-bold text-text-primary hover:bg-surface-hover/50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <GraduationCap className="w-4.5 h-4.5 text-primary" />
-              <span>4. Metodologias</span>
-            </div>
-            {isMethodologyExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-          {isMethodologyExpanded && (
-            <div className="p-4 border-t border-border bg-background/20">
-              <PedagogicalMethodologyForm
-                schoolId={selectedChild?.school_id}
-                schools={schools}
-                methodologyToEdit={methodologyToEdit}
-                onCancelEdit={() => setMethodologyToEdit(null)}
-                onSubmit={async (payload) => {
-                  await onSubmit("/api/v1/pedagogy/methodologies", payload, methodologyToEdit ? "Metodologia atualizada." : "Metodologia cadastrada.");
-                  setMethodologyToEdit(null);
-                }}
-                notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
-              />
-
-              <div className="mt-4 pt-4 border-t border-border/80 flex flex-col gap-2 max-h-40 overflow-y-auto">
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Metodologias Cadastradas ({methodologies.length})</span>
-                {methodologies.map(m => (
-                  <div key={m.id} className="flex justify-between items-center text-xs p-2 bg-background/45 rounded-lg border border-border/50">
-                    <div>
-                      <span className={`${m.is_active !== false ? "text-text-primary" : "text-text-muted line-through"}`}>{m.name}</span>
-                      {m.is_active === false && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => setMethodologyToEdit(m)} className="text-primary hover:underline font-semibold" title="Editar" aria-label="Editar"><Edit3 className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => onToggleActive("/api/v1/pedagogy/methodologies", m.id, m.is_active !== false)} className={`${m.is_active !== false ? "text-error" : "text-ok"} hover:underline font-semibold`}>
-                        {m.is_active !== false ? "Inativar" : "Ativar"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Accordion para cadastrar UsuÃ¡rios */}
+      {/* Accordion para cadastrar Usuários */}
       {showSchoolCreate && (
         <div className="border border-border rounded-2xl overflow-hidden bg-surface">
           <button
@@ -1011,17 +1001,17 @@ function DashboardPage({
                 userToEdit={userToEdit}
                 onCancelEdit={() => setUserToEdit(null)}
                 onSubmit={async (payload) => {
-                  await onSubmit("/api/v1/auth/users", payload, userToEdit ? "UsuÃ¡rio atualizado." : "UsuÃ¡rio cadastrado.");
+                  await onSubmit("/api/v1/auth/users", payload, userToEdit ? "Usuário atualizado." : "Usuário cadastrado.");
                   setUserToEdit(null);
                 }}
               />
 
               <div className="mt-4 pt-4 border-t border-border/80 flex flex-col gap-2 max-h-40 overflow-y-auto">
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">UsuÃ¡rios Cadastrados ({usersList.length})</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Usuários Cadastrados ({usersList.length})</span>
                 {usersList.map(u => (
                   <div key={u.id} className="flex justify-between items-center text-xs p-2 bg-background/45 rounded-lg border border-border/50">
                     <div>
-                      <span className={`${u.is_active !== false ? "text-text-primary" : "text-text-muted line-through"}`}>{u.name} ({u.role === "guardian" ? "ResponsÃ¡vel" : u.role})</span>
+                      <span className={`${u.is_active !== false ? "text-text-primary" : "text-text-muted line-through"}`}>{u.name} ({u.role === "guardian" ? "Responsável" : u.role})</span>
                       {u.is_active === false && <span className="ml-1 text-[8px] bg-error/20 text-error px-1 rounded uppercase font-bold">Inativo</span>}
                     </div>
                     <div className="flex gap-2">
@@ -1055,7 +1045,7 @@ function DashboardPage({
           {isLgpdExpanded && (
             <div className="p-4 border-t border-border bg-background/20 flex flex-col gap-3">
               <p className="text-[10px] text-text-muted leading-relaxed">
-                Em conformidade com a LGPD, vocÃª pode baixar seus dados ou solicitar a exclusÃ£o total do prontuÃ¡rio deste aluno.
+                Em conformidade com a LGPD, você pode baixar seus dados ou solicitar a exclusão total do prontuário deste aluno.
               </p>
               <div className="flex flex-col gap-2">
                 <Button
@@ -1069,7 +1059,7 @@ function DashboardPage({
                 </Button>
                 <Button
                   onClick={async () => {
-                    if (window.confirm("ATENÃ‡ÃƒO: Esta aÃ§Ã£o Ã© irreversÃ­vel. Todos os dados pedagÃ³gicos, rotinas, tarefas e histÃ³rico deste aluno serÃ£o excluÃ­dos permanentemente. Deseja continuar?")) {
+                    if (window.confirm("ATENÇÃO: Esta ação é irreversível. Todos os dados pedagógicos, rotinas, tarefas e histórico deste aluno serão excluídos permanentemente. Deseja continuar?")) {
                       try {
                         await api(`/api/v1/children/${selectedChildId}/forget-lgpd`, { method: "DELETE" });
                         notify("Todos os dados do aluno foram apagados definitivamente.");
@@ -1102,7 +1092,7 @@ function DashboardPage({
         />
       )}
       <AppShell user={user} onLogout={onLogout} sidebarContent={sidebarContent}>
-      {/* SeÃ§Ã£o superior de MÃ©tricas */}
+      {/* Seção superior de Métricas */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <MetricCard
           icon={<SchoolIcon className="w-5.5 h-5.5 text-primary" />}
@@ -1112,25 +1102,25 @@ function DashboardPage({
         />
         <MetricCard
           icon={<UserPlus className="w-5.5 h-5.5 text-secondary" />}
-          label="CrianÃ§as Cadastradas"
+          label="Crianças Cadastradas"
           value={childrenList.length}
           colorClass="bg-secondary/10"
         />
         <MetricCard
           icon={<Bell className="w-5.5 h-5.5 text-tertiary" />}
-          label="NotificaÃ§Ãµes da CrianÃ§a"
+          label="Notificações da Criança"
           value={notifications.length}
           colorClass="bg-tertiary/10"
         />
         <MetricCard
           icon={<ClipboardList className="w-5.5 h-5.5 text-error" />}
-          label="Tarefas da CrianÃ§a"
+          label="Tarefas da Criança"
           value={tasks.length}
           colorClass="bg-error/10"
         />
       </section>
 
-      {/* ConteÃºdo Principal com skeletons se carregando */}
+      {/* Conteúdo Principal com skeletons se carregando */}
       {isLoadingData ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <SkeletonList count={2} />
@@ -1138,7 +1128,7 @@ function DashboardPage({
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          {/* NavegaÃ§Ã£o de Abas do Dashboard */}
+          {/* Navegação de Abas do Dashboard */}
           <div className="flex border-b border-border gap-6 mb-2">
             <button
               onClick={() => setActiveDashboardTab("overview")}
@@ -1148,7 +1138,7 @@ function DashboardPage({
                   : "border-transparent text-text-muted hover:text-text-primary"
               }`}
             >
-              VisÃ£o Geral
+              Visão Geral
             </button>
             <button
               onClick={() => setActiveDashboardTab("metrics")}
@@ -1158,7 +1148,7 @@ function DashboardPage({
                   : "border-transparent text-text-muted hover:text-text-primary"
               }`}
             >
-              RelatÃ³rios & MÃ©tricas
+              Relatórios & Métricas
             </button>
           </div>
 
@@ -1171,12 +1161,16 @@ function DashboardPage({
                 </h3>
 
                 {selectedChildId && (
-                  <div className="mb-6">
+                  <div className="mb-6 flex flex-col gap-6">
                     <SchoolScheduleManager
                       childId={selectedChildId}
                       schoolId={selectedChild?.school_id}
                       materials={materials}
                       canEdit={canManageSchedule}
+                      notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
+                    />
+                    <ClipEscolaSync
+                      childId={selectedChildId}
                       notify={(msg, type) => notify(msg, type === "error" ? "error" : "ok")}
                     />
                   </div>

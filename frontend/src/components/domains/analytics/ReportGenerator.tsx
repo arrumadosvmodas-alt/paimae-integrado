@@ -20,7 +20,7 @@ export function ReportGenerator({ childId, childData }: ReportGeneratorProps) {
   const handleGenerateReport = async () => {
     setGenerating(true);
     try {
-      const metricsData = await api<LearningMetrics>(`/api/v1/learning/metrics?child_id=${childId}`);
+      const metricsData = await api<LearningMetrics>(`/api/v1/learning/children/${childId}/metrics`);
       setMetrics(metricsData);
       setToast("✅ Relatório gerado com sucesso!");
     } catch (err) {

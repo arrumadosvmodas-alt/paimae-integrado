@@ -124,6 +124,35 @@ export async function generateScheduleActivities(scheduleId: string): Promise<Sc
     method: "POST",
   });
 }
+
+// ===== CLIPESCOLA (integracao pessoal do responsavel) =====
+
+export type ClipEscolaStatus = {
+  account_id: string | null;
+  status: "not_configured" | "pending_pairing" | "active" | "needs_reauth";
+  last_synced_at: string | null;
+};
+
+export async function getClipEscolaStatus(childId: string): Promise<ClipEscolaStatus> {
+  return api(`/api/v1/clip-escola/${childId}`);
+}
+
+export async function startClipEscolaPairing(childId: string): Promise<{ account_id: string; qr_image_base64: string }> {
+  return api(`/api/v1/clip-escola/${childId}/pair/start`, { method: "POST" });
+}
+
+export async function getClipEscolaPairingStatus(childId: string): Promise<ClipEscolaStatus> {
+  return api(`/api/v1/clip-escola/${childId}/pair/status`);
+}
+
+export async function syncClipEscolaNow(childId: string): Promise<{ status: string; schedules_created: number; messages_read: number; message?: string }> {
+  return api(`/api/v1/clip-escola/${childId}/sync`, { method: "POST" });
+}
+
+export async function disconnectClipEscola(childId: string): Promise<{ message: string }> {
+  return api(`/api/v1/clip-escola/${childId}`, { method: "DELETE" });
+}
+
 // ===== FASE C: Orquestração =====
 
 export async function createStudyPlan(data: {

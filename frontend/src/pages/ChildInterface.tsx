@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CheckCircle2, Loader, MessageSquare, Send, Sparkles, Star } from "lucide-react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -46,7 +46,7 @@ export function ChildInterface() {
   async function sendAnswer(interaction: Interaction) {
     const responseText = answers[interaction.id]?.trim();
     if (!responseText) return;
-    await api(`/api/v1/interactions/${interaction.id}/responses`, {
+    await api(`/api/v1/study-plans/interactions/${interaction.id}/responses`, {
       method: "POST",
       body: JSON.stringify({ responder_type: "child", response_text: responseText, response_score: 5, responded_at: today }),
     });

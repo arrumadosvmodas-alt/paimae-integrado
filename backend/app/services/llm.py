@@ -186,6 +186,67 @@ Responda apenas com a orientação, sem formatação adicional.
             logger.error(f"Erro geral em generate_daily_interaction: {str(e)}")
             return self._simulate_interaction(child_name, chapter, theme, recipient_type)
 
+    def extract_agenda_entries(self, raw_messages: list[str]) -> list[dict[str, Any]]:
+        """
+        Interpreta recados de agenda escolar em texto livre (ex: ClipEscola) e
+        extrai apenas os que representam conteudo de estudo, estruturando
+        assunto/topico/data. Recados administrativos genericos (reuniao,
+        cobranca, aviso de evento sem conteudo pedagogico) sao descartados.
+        """
+        if not raw_messages:
+            return []
+
+        if not self.api_key:
+            logger.warning("Gemini API key não configurada. Retornando extração simulada.")
+            return self._simulate_agenda_entries(raw_messages)
+
+        try:
+            prompt = f"""
+Voce recebe uma lista de recados postados por uma escola na agenda de comunicacao com os pais.
+Para cada recado, decida se ele descreve um CONTEUDO DE ESTUDO com data especifica (ex: materia/assunto
+que a crianca vai estudar ou tera avaliacao em um dia determinado). Ignore recados puramente
+administrativos (reuniao de pais, cobranca, aviso de evento social, elogio pontual sem assunto de estudo).
+
+RECADOS (um por linha, numerados):
+{chr(10).join(f"{i+1}. {m}" for i, m in enumerate(raw_messages))}
+
+Retorne APENAS um JSON (lista), sem markdown, no formato:
+[
+  {{
+    "subject": "disciplina (ex: Matematica, Portugues, Ciencias)",
+    "topic": "assunto especifico mencionado",
+    "date": "YYYY-MM-DD ou null se nao houver data explicita/inferivel",
+    "confidence": 0.0 a 1.0
+  }}
+]
+
+Inclua no array APENAS os recados que tenham conteudo de estudo E data valida. Se nenhum recado
+se qualificar, retorne [].
+"""
+            try:
+                response = self.model.generate_content(prompt)
+                entries = json.loads(response.text)
+                if not isinstance(entries, list):
+                    raise ValueError("Resposta nao e uma lista JSON")
+                logger.info(f"Extração de agenda: {len(entries)} entradas de estudo identificadas de {len(raw_messages)} recados")
+                return entries
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.error(f"Resposta da IA não é JSON válido para extração de agenda: {str(e)}")
+                return self._simulate_agenda_entries(raw_messages)
+            except Exception as e:
+                logger.error(f"Erro ao chamar Gemini API para extração de agenda: {str(e)}")
+                return self._simulate_agenda_entries(raw_messages)
+        except Exception as e:
+            logger.error(f"Erro geral em extract_agenda_entries: {str(e)}")
+            return self._simulate_agenda_entries(raw_messages)
+
+    @staticmethod
+    def _simulate_agenda_entries(raw_messages: list[str]) -> list[dict[str, Any]]:
+        """Sem API configurada, nao ha como interpretar texto livre com confianca -
+        retorna lista vazia em vez de arriscar dados incorretos na rotina da crianca."""
+        logger.info(f"Simulando extração de agenda para {len(raw_messages)} recados (sem API key, retornando vazio)")
+        return []
+
     @staticmethod
     def _simulate_analysis(title: str, author: str) -> dict[str, Any]:
         """Simula análise de IA para testes sem API configurada."""

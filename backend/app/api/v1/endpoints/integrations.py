@@ -23,9 +23,10 @@ from app.schemas.integration import (
 from app.services.google_classroom import GoogleClassroomService
 from app.services.microsoft_teams import MicrosoftTeamsService
 from app.services.whatsapp import WhatsAppBusinessService
+from app.services.permissions import ensure_school_staff
 from app.services.webhook import WebhookService
 
-router = APIRouter(prefix="/integrations", tags=["integrations"])
+router = APIRouter()
 
 google_classroom = GoogleClassroomService()
 microsoft_teams = MicrosoftTeamsService()
@@ -39,6 +40,7 @@ async def list_integrations(
     current_user: User = Depends(get_current_user),
 ):
     """Lista todas as integrações da escola."""
+    ensure_school_staff(current_user)
     integrations = (
         db.query(Integration)
         .filter_by(school_id=current_user.school_id)
@@ -54,6 +56,7 @@ async def create_integration(
     current_user: User = Depends(get_current_user),
 ):
     """Cria uma nova integração."""
+    ensure_school_staff(current_user)
     integration = Integration(
         school_id=current_user.school_id,
         provider=data.provider,
@@ -76,6 +79,7 @@ async def update_integration(
     current_user: User = Depends(get_current_user),
 ):
     """Atualiza uma integração."""
+    ensure_school_staff(current_user)
     integration = (
         db.query(Integration)
         .filter_by(id=integration_id, school_id=current_user.school_id)
@@ -100,6 +104,7 @@ async def delete_integration(
     current_user: User = Depends(get_current_user),
 ):
     """Deleta uma integração."""
+    ensure_school_staff(current_user)
     integration = (
         db.query(Integration)
         .filter_by(id=integration_id, school_id=current_user.school_id)
@@ -122,6 +127,7 @@ async def sync_integration(
     current_user: User = Depends(get_current_user),
 ):
     """Sincroniza dados de uma integração."""
+    ensure_school_staff(current_user)
     integration = (
         db.query(Integration)
         .filter_by(id=integration_id, school_id=current_user.school_id)
@@ -184,6 +190,7 @@ async def list_webhook_subscriptions(
     current_user: User = Depends(get_current_user),
 ):
     """Lista todas as inscrições de webhook."""
+    ensure_school_staff(current_user)
     subscriptions = (
         db.query(WebhookSubscription)
         .filter_by(school_id=current_user.school_id)
@@ -199,6 +206,7 @@ async def create_webhook_subscription(
     current_user: User = Depends(get_current_user),
 ):
     """Cria uma nova inscrição de webhook."""
+    ensure_school_staff(current_user)
     subscription = WebhookSubscription(
         school_id=current_user.school_id,
         name=data.name,
@@ -221,6 +229,7 @@ async def test_webhook(
     current_user: User = Depends(get_current_user),
 ):
     """Testa um webhook."""
+    ensure_school_staff(current_user)
     subscription = (
         db.query(WebhookSubscription)
         .filter_by(id=subscription_id, school_id=current_user.school_id)

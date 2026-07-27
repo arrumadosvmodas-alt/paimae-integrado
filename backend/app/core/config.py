@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     from_email: str = "noreply@paimae.local"
 
+    # Criptografia de credenciais/sessoes sensiveis em repouso (ex: ClipEscola)
+    encryption_key: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @model_validator(mode="after")

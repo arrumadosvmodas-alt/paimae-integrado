@@ -2,7 +2,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -129,6 +129,34 @@ class WhatsAppBusinessSync(IdMixin, TimestampMixin, Base):
 
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ClipEscolaAccount(IdMixin, TimestampMixin, Base):
+    """Sessao pessoal do responsavel com o ClipEscola (pareamento via QR Code).
+
+    Diferente das demais integracoes (nivel escola, geridas por staff), esta e
+    por responsavel + crianca, pois o acesso e o login pessoal do responsavel
+    no app da escola - nao existe API/token oficial para uso individual.
+    """
+    __tablename__ = "clip_escola_accounts"
+    __table_args__ = (
+        UniqueConstraint("guardian_id", "child_id", name="uq_clip_escola_account_guardian_child"),
+    )
+
+    guardian_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    child_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("children.id"), nullable=False, index=True)
+
+    # Cookie/estado de sessao do ClipEscola, criptografado (app.core.crypto)
+    session_cookie_encrypted: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending_pairing")  # pending_pairing, active, needs_reauth
+    qr_pairing_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_message_ids: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # {"secretaria": "123", ...} para dedup
+
+    guardian = relationship("User")
+    child = relationship("Child")
 
 
 class WebhookSubscription(IdMixin, TimestampMixin, Base):
