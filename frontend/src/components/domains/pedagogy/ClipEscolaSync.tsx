@@ -73,6 +73,10 @@ export function ClipEscolaSync({ childId, notify }: ClipEscolaSyncProps) {
         try {
           const polled = await getClipEscolaPairingStatus(childId);
           setStatus(polled);
+          if (polled.qr_image_base64) {
+            // O QR Code foi renovado no servidor - atualiza a imagem exibida
+            setQrImage(polled.qr_image_base64);
+          }
           if (polled.status === "active") {
             setQrImage(null);
             stopPolling();

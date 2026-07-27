@@ -15,6 +15,7 @@ class ClipEscolaStatusResponse(BaseModel):
     account_id: Optional[UUID] = None
     status: str  # not_configured, pending_pairing, active, needs_reauth
     last_synced_at: Optional[datetime] = None
+    qr_image_base64: Optional[str] = None  # preenchido quando o QR Code foi renovado
 
     class Config:
         from_attributes = True

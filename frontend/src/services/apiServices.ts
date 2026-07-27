@@ -131,6 +131,7 @@ export type ClipEscolaStatus = {
   account_id: string | null;
   status: "not_configured" | "pending_pairing" | "active" | "needs_reauth";
   last_synced_at: string | null;
+  qr_image_base64?: string | null;
 };
 
 export async function getClipEscolaStatus(childId: string): Promise<ClipEscolaStatus> {

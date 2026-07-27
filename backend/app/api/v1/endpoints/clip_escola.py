@@ -81,12 +81,13 @@ async def get_pairing_status(
 ):
     ensure_child_access(db, current_user, child_id, manage_routine=True)
     account = _get_account_or_404(db, current_user.id, child_id)
-    status_value = await clip_escola_service.check_pairing_status(db, account)
+    result = await clip_escola_service.check_pairing_status(db, account)
     db.commit()
     return ClipEscolaStatusResponse(
         account_id=account.id,
-        status=status_value,
+        status=result["status"],
         last_synced_at=account.last_synced_at,
+        qr_image_base64=result["qr_image_base64"],
     )
 
 
