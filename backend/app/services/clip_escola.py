@@ -289,6 +289,116 @@ def sync_agenda(db: Session, account: ClipEscolaAccount) -> dict:
     }
 
 
+def _block_matches_date(block: str, target_date: date) -> bool:
+    first_line = block.splitlines()[0].strip() if block else ""
+    candidates = {
+        target_date.strftime("%d/%m"),
+        target_date.strftime("%d/%m/%Y"),
+        target_date.strftime("%d/%m/%y"),
+    }
+    return first_line in candidates
+
+
+def _go_to_previous_period(page) -> bool:
+    """Tenta clicar num controle de navegacao 'anterior' na aba Clips (seta,
+    botao ou link com nome comum em datepickers PrimeFaces) para carregar um
+    periodo anterior. Retorna False se nao achar nenhum controle - nesse
+    caso nao ha mais como voltar e a busca para."""
+    selectors = [
+        "button:has-text('Anterior')",
+        "a:has-text('Anterior')",
+        "[aria-label*='anterior' i]",
+        "[aria-label*='previous' i]",
+        ".ui-datepicker-prev",
+        "button:has-text('<')",
+        "a:has-text('<')",
+    ]
+    for selector in selectors:
+        locator = page.locator(selector).first
+        try:
+            if locator.count() > 0:
+                locator.click()
+                page.wait_for_load_state("networkidle")
+                return True
+        except Exception:
+            continue
+    return False
+
+
+_DATE_LOOKUP_MAX_ATTEMPTS = 12  # limite de "paginas para tras" antes de desistir
+
+
+def find_agenda_for_date(db: Session, account: ClipEscolaAccount, target_date: date) -> dict:
+    """Busca na aba 'Clips' o conteudo de um dia especifico informado pelo
+    responsavel - usado quando a sincronizacao automatica nao trouxe nada
+    para aquele dia (ex: dia fora da janela padrao exibida pelo app, ou a
+    sincronizacao automatica ainda nao rodou). Navega para tras nas paginas
+    da aba Clips ate achar o dia pedido ou esgotar as tentativas."""
+    from playwright.sync_api import sync_playwright
+
+    storage_state = _load_storage_state(account)
+    if not storage_state or account.status != "active":
+        return {"status": "needs_reauth", "message": "Conta nunca pareada ou nao ativa."}
+
+    found_block: str | None = None
+    session_valid = True
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(storage_state=storage_state)
+        page = context.new_page()
+        page.goto(f"https://www.clipescola.com.br/acesso/{DASHBOARD_URL_FRAGMENT}", wait_until="networkidle")
+
+        if DASHBOARD_URL_FRAGMENT not in page.url:
+            session_valid = False
+        else:
+            try:
+                page.get_by_text("Clips", exact=False).first.click()
+                page.wait_for_load_state("networkidle")
+
+                for _ in range(_DATE_LOOKUP_MAX_ATTEMPTS):
+                    blocks = _extract_clips_entries(page)
+                    match = next((b for b in blocks if _block_matches_date(b, target_date)), None)
+                    if match:
+                        found_block = match
+                        break
+                    if not _go_to_previous_period(page):
+                        break
+            except Exception:
+                logger.exception(
+                    "Falha ao buscar data especifica (%s) na aba 'Clips' do ClipEscola (conta %s)",
+                    target_date, account.id,
+                )
+
+        updated_state = context.storage_state()
+        browser.close()
+
+    _save_storage_state(account, updated_state)
+
+    if not session_valid:
+        account.status = "needs_reauth"
+        db.flush()
+        return {"status": "needs_reauth", "message": "Sessao do ClipEscola expirou."}
+
+    account.status = "active"
+    db.flush()
+
+    if not found_block:
+        return {"status": "not_found", "date": target_date.isoformat()}
+
+    entries = llm_service.extract_daily_agenda_entries([found_block])
+    created = _persist_schedule_entries(db, account.child_id, entries)
+    db.flush()
+
+    return {
+        "status": "success",
+        "date": target_date.isoformat(),
+        "schedules_created": created,
+        "raw_text": found_block,
+        "entries": entries,
+    }
+
+
 def _persist_schedule_entries(db: Session, child_id: UUID, entries: list[dict]) -> int:
     child = db.get(Child, child_id)
     if not child:

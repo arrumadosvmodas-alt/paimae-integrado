@@ -17,6 +17,8 @@ from app.api.deps import get_current_user, get_db
 from app.models.integration import ClipEscolaAccount
 from app.models.user import User
 from app.schemas.clip_escola import (
+    ClipEscolaDateLookupRequest,
+    ClipEscolaDateLookupResponse,
     ClipEscolaPairingResponse,
     ClipEscolaStatusResponse,
     ClipEscolaSyncResponse,
@@ -100,6 +102,22 @@ def sync_now(
     ensure_child_access(db, current_user, child_id, manage_routine=True)
     account = _get_account_or_404(db, current_user.id, child_id)
     result = clip_escola_service.sync_agenda(db, account)
+    db.commit()
+    return result
+
+
+@router.post("/{child_id}/lookup-date", response_model=ClipEscolaDateLookupResponse)
+def lookup_date(
+    child_id: UUID,
+    payload: ClipEscolaDateLookupRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """Busca o conteudo de um dia especifico na aba Clips - usado quando a
+    sincronizacao automatica nao trouxe nenhum recado para aquele dia."""
+    ensure_child_access(db, current_user, child_id, manage_routine=True)
+    account = _get_account_or_404(db, current_user.id, child_id)
+    result = clip_escola_service.find_agenda_for_date(db, account, payload.date)
     db.commit()
     return result
 

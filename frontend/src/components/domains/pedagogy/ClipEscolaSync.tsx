@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { QrCode, RefreshCw, Unlink } from "lucide-react";
+import { QrCode, RefreshCw, Search, Unlink } from "lucide-react";
 
 import { Button } from "../../ui/Button";
 import { Card } from "../../ui/Card";
+import { Input } from "../../ui/Input";
 import {
   disconnectClipEscola,
   getClipEscolaPairingStatus,
   getClipEscolaStatus,
+  lookupClipEscolaDate,
   startClipEscolaPairing,
   syncClipEscolaNow,
+  type ClipEscolaDateLookupEntry,
   type ClipEscolaStatus,
 } from "../../../services/apiServices";
 
@@ -26,6 +29,14 @@ export function ClipEscolaSync({ childId, notify }: ClipEscolaSyncProps) {
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [lookupDate, setLookupDate] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupResult, setLookupResult] = useState<{
+    status: "success" | "not_found" | "needs_reauth";
+    date?: string;
+    schedules_created: number;
+    entries?: ClipEscolaDateLookupEntry[] | null;
+  } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function stopPolling() {
@@ -111,6 +122,28 @@ export function ClipEscolaSync({ childId, notify }: ClipEscolaSyncProps) {
       notify(error instanceof Error ? error.message : "Erro ao sincronizar agenda do ClipEscola.", "error");
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleLookupDate() {
+    if (!childId || !lookupDate) return;
+    setLookupLoading(true);
+    setLookupResult(null);
+    try {
+      const result = await lookupClipEscolaDate(childId, lookupDate);
+      setLookupResult(result);
+      if (result.status === "needs_reauth") {
+        notify("Sessão do ClipEscola expirou. Escaneie o QR Code novamente.", "error");
+        await loadStatus();
+      } else if (result.status === "not_found") {
+        notify("Nenhuma informação encontrada para essa data na aba Clips.", "info");
+      } else {
+        notify(`Encontrado: ${result.schedules_created} conteúdo(s) de estudo para ${lookupDate}.`);
+      }
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Erro ao buscar data no ClipEscola.", "error");
+    } finally {
+      setLookupLoading(false);
     }
   }
 
@@ -203,6 +236,60 @@ export function ClipEscolaSync({ childId, notify }: ClipEscolaSyncProps) {
             <Button variant="outline" onClick={handleDisconnect} disabled={!childId || loading}>
               <Unlink className="w-4 h-4" /> Desconectar
             </Button>
+          </div>
+
+          <div className="flex flex-col gap-2 pt-3 border-t border-border">
+            <p className="text-sm text-text-muted">
+              Não achou o conteúdo de algum dia? Informe a data e o sistema busca diretamente na aba Clips.
+            </p>
+            <div className="flex flex-wrap items-end gap-2">
+              <Input
+                type="date"
+                value={lookupDate}
+                onChange={(e) => setLookupDate(e.target.value)}
+                className="max-w-[180px]"
+              />
+              <Button
+                variant="secondary"
+                onClick={handleLookupDate}
+                isLoading={lookupLoading}
+                disabled={!childId || !lookupDate}
+              >
+                <Search className="w-4 h-4" /> Buscar data
+              </Button>
+            </div>
+
+            {lookupResult?.status === "not_found" && (
+              <p className="text-sm text-text-muted">Nenhuma informação encontrada para essa data na aba Clips.</p>
+            )}
+
+            {lookupResult?.status === "success" && (
+              <div className="flex flex-col gap-1">
+                <p className="text-sm text-text-primary">
+                  {lookupResult.schedules_created} conteúdo(s) de estudo criado(s) para{" "}
+                  {lookupResult.date ? new Date(`${lookupResult.date}T00:00:00`).toLocaleDateString("pt-BR") : lookupDate}.
+                </p>
+                {lookupResult.entries && lookupResult.entries.length > 0 && (
+                  <ul className="list-disc list-inside text-sm text-text-muted">
+                    {lookupResult.entries.map((entry, index) => (
+                      <li key={index}>
+                        {entry.subject}
+                        {entry.topic ? ` — ${entry.topic}` : ""}
+                        {entry.book
+                          ? ` (livro: ${entry.book}${
+                              entry.page_start
+                                ? `, pág. ${entry.page_start}${
+                                    entry.page_end && entry.page_end !== entry.page_start ? `-${entry.page_end}` : ""
+                                  }`
+                                : ""
+                            })`
+                          : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

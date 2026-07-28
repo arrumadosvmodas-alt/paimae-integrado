@@ -150,6 +150,33 @@ export async function syncClipEscolaNow(childId: string): Promise<{ status: stri
   return api(`/api/v1/clip-escola/${childId}/sync`, { method: "POST" });
 }
 
+export type ClipEscolaDateLookupEntry = {
+  subject: string;
+  topic?: string | null;
+  book?: string | null;
+  page_start?: number | null;
+  page_end?: number | null;
+  date: string;
+  confidence?: number;
+};
+
+export async function lookupClipEscolaDate(
+  childId: string,
+  date: string
+): Promise<{
+  status: "success" | "not_found" | "needs_reauth";
+  date?: string;
+  schedules_created: number;
+  raw_text?: string | null;
+  entries?: ClipEscolaDateLookupEntry[] | null;
+  message?: string;
+}> {
+  return api(`/api/v1/clip-escola/${childId}/lookup-date`, {
+    method: "POST",
+    body: JSON.stringify({ date }),
+  });
+}
+
 export async function disconnectClipEscola(childId: string): Promise<{ message: string }> {
   return api(`/api/v1/clip-escola/${childId}`, { method: "DELETE" });
 }

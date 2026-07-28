@@ -1,6 +1,6 @@
 """Schemas para a integração pessoal com o ClipEscola."""
-from datetime import datetime
-from typing import Optional
+from datetime import date, datetime
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -25,4 +25,17 @@ class ClipEscolaSyncResponse(BaseModel):
     status: str
     schedules_created: int = 0
     clips_read: int = 0
+    message: Optional[str] = None
+
+
+class ClipEscolaDateLookupRequest(BaseModel):
+    date: date
+
+
+class ClipEscolaDateLookupResponse(BaseModel):
+    status: str  # success, not_found, needs_reauth
+    date: Optional[str] = None
+    schedules_created: int = 0
+    raw_text: Optional[str] = None
+    entries: Optional[list[dict[str, Any]]] = None
     message: Optional[str] = None
