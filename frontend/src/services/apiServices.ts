@@ -146,7 +146,7 @@ export async function getClipEscolaPairingStatus(childId: string): Promise<ClipE
   return api(`/api/v1/clip-escola/${childId}/pair/status`);
 }
 
-export async function syncClipEscolaNow(childId: string): Promise<{ status: string; schedules_created: number; messages_read: number; message?: string }> {
+export async function syncClipEscolaNow(childId: string): Promise<{ status: string; schedules_created: number; clips_read: number; message?: string }> {
   return api(`/api/v1/clip-escola/${childId}/sync`, { method: "POST" });
 }
 

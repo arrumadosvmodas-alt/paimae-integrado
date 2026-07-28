@@ -186,65 +186,68 @@ Responda apenas com a orientação, sem formatação adicional.
             logger.error(f"Erro geral em generate_daily_interaction: {str(e)}")
             return self._simulate_interaction(child_name, chapter, theme, recipient_type)
 
-    def extract_agenda_entries(self, raw_messages: list[str]) -> list[dict[str, Any]]:
+    def extract_daily_agenda_entries(self, raw_blocks: list[str]) -> list[dict[str, Any]]:
         """
-        Interpreta recados de agenda escolar em texto livre (ex: ClipEscola) e
-        extrai apenas os que representam conteudo de estudo, estruturando
-        assunto/topico/data. Recados administrativos genericos (reuniao,
-        cobranca, aviso de evento sem conteudo pedagogico) sao descartados.
+        Interpreta blocos de texto da agenda diaria (ex: aba 'Clips' do
+        ClipEscola), um bloco por dia, e extrai para cada materia mencionada
+        o assunto/conteudo, o livro citado e a paginacao (quando houver),
+        alem da data. Diferente de extract_agenda_entries (recados gerais),
+        aqui o foco e o conteudo didatico do dia (materia + livro + pagina).
         """
-        if not raw_messages:
+        if not raw_blocks:
             return []
 
         if not self.api_key:
             logger.warning("Gemini API key não configurada. Retornando extração simulada.")
-            return self._simulate_agenda_entries(raw_messages)
+            return self._simulate_daily_agenda_entries(raw_blocks)
 
         try:
             prompt = f"""
-Voce recebe uma lista de recados postados por uma escola na agenda de comunicacao com os pais.
-Para cada recado, decida se ele descreve um CONTEUDO DE ESTUDO com data especifica (ex: materia/assunto
-que a crianca vai estudar ou tera avaliacao em um dia determinado). Ignore recados puramente
-administrativos (reuniao de pais, cobranca, aviso de evento social, elogio pontual sem assunto de estudo).
+Voce recebe blocos de texto da agenda diaria de uma escola. Cada bloco comeca com uma data e lista,
+por materia, o conteudo estudado no dia - normalmente citando o livro/apostila usado e a paginacao
+(ex: "Matematica - Livro Aprender Juntos, pag. 12 a 15" ou "Portugues p. 20-22").
 
-RECADOS (um por linha, numerados):
-{chr(10).join(f"{i+1}. {m}" for i, m in enumerate(raw_messages))}
+BLOCOS (um por dia, numerados):
+{chr(10).join(f"=== Bloco {i+1} ==={chr(10)}{b}" for i, b in enumerate(raw_blocks))}
 
-Retorne APENAS um JSON (lista), sem markdown, no formato:
+Para cada materia identificada em cada bloco, retorne um item. Retorne APENAS um JSON (lista), sem
+markdown, no formato:
 [
   {{
     "subject": "disciplina (ex: Matematica, Portugues, Ciencias)",
-    "topic": "assunto especifico mencionado",
-    "date": "YYYY-MM-DD ou null se nao houver data explicita/inferivel",
+    "topic": "assunto/conteudo especifico mencionado, ou null se nao houver",
+    "book": "nome do livro/apostila citado, ou null se nao houver",
+    "page_start": numero inteiro da pagina inicial, ou null,
+    "page_end": numero inteiro da pagina final, ou null (igual a page_start se for uma unica pagina),
+    "date": "YYYY-MM-DD",
     "confidence": 0.0 a 1.0
   }}
 ]
 
-Inclua no array APENAS os recados que tenham conteudo de estudo E data valida. Se nenhum recado
-se qualificar, retorne [].
+Inclua APENAS itens com data valida e materia identificada. Se nenhum se qualificar, retorne [].
 """
             try:
                 response = self.model.generate_content(prompt)
                 entries = json.loads(response.text)
                 if not isinstance(entries, list):
                     raise ValueError("Resposta nao e uma lista JSON")
-                logger.info(f"Extração de agenda: {len(entries)} entradas de estudo identificadas de {len(raw_messages)} recados")
+                logger.info(f"Extração de agenda diária: {len(entries)} entradas identificadas de {len(raw_blocks)} blocos")
                 return entries
             except (json.JSONDecodeError, ValueError) as e:
-                logger.error(f"Resposta da IA não é JSON válido para extração de agenda: {str(e)}")
-                return self._simulate_agenda_entries(raw_messages)
+                logger.error(f"Resposta da IA não é JSON válido para extração de agenda diária: {str(e)}")
+                return self._simulate_daily_agenda_entries(raw_blocks)
             except Exception as e:
-                logger.error(f"Erro ao chamar Gemini API para extração de agenda: {str(e)}")
-                return self._simulate_agenda_entries(raw_messages)
+                logger.error(f"Erro ao chamar Gemini API para extração de agenda diária: {str(e)}")
+                return self._simulate_daily_agenda_entries(raw_blocks)
         except Exception as e:
-            logger.error(f"Erro geral em extract_agenda_entries: {str(e)}")
-            return self._simulate_agenda_entries(raw_messages)
+            logger.error(f"Erro geral em extract_daily_agenda_entries: {str(e)}")
+            return self._simulate_daily_agenda_entries(raw_blocks)
 
     @staticmethod
-    def _simulate_agenda_entries(raw_messages: list[str]) -> list[dict[str, Any]]:
+    def _simulate_daily_agenda_entries(raw_blocks: list[str]) -> list[dict[str, Any]]:
         """Sem API configurada, nao ha como interpretar texto livre com confianca -
         retorna lista vazia em vez de arriscar dados incorretos na rotina da crianca."""
-        logger.info(f"Simulando extração de agenda para {len(raw_messages)} recados (sem API key, retornando vazio)")
+        logger.info(f"Simulando extração de agenda diária para {len(raw_blocks)} blocos (sem API key, retornando vazio)")
         return []
 
     @staticmethod

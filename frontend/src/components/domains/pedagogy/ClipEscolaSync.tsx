@@ -102,7 +102,10 @@ export function ClipEscolaSync({ childId, notify }: ClipEscolaSyncProps) {
         notify("Sessão do ClipEscola expirou. Escaneie o QR Code novamente.", "error");
         await loadStatus();
       } else {
-        notify(`Sincronizado: ${result.schedules_created} novo(s) conteúdo(s) de estudo identificado(s).`);
+        notify(
+          `Sincronizado: ${result.schedules_created} novo(s) conteúdo(s) de estudo identificado(s)` +
+            (result.clips_read ? ` (${result.clips_read} dia(s) lido(s) na aba Clips).` : "."),
+        );
       }
     } catch (error) {
       notify(error instanceof Error ? error.message : "Erro ao sincronizar agenda do ClipEscola.", "error");

@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from app.core.crypto import decrypt_str, encrypt_str
 from app.models.child import Child
 from app.models.integration import ClipEscolaAccount
-from app.models.pedagogy import SchoolSchedule
+from app.models.pedagogy import PedagogicalMaterial, SchoolSchedule
 from app.core.config import settings
 from app.services.llm import get_llm_service
 
@@ -181,47 +181,68 @@ async def check_pairing_status(db: Session, account: ClipEscolaAccount) -> dict:
     return {"status": account.status, "qr_image_base64": None}
 
 
-def _extract_category_messages(page, category_name: str) -> list[str]:
-    """Na pagina da categoria (feed.xhtml) ja aberta, extrai o texto de cada
-    recado. A pagina mostra 'Tudo vazio!...' quando nao ha recados."""
+def _looks_like_date(line: str) -> bool:
+    import re
+
+    return bool(re.fullmatch(r"\d{1,2}/\d{1,2}(/\d{2,4})?", line.strip()))
+
+
+def _extract_clips_entries(page) -> list[str]:
+    """Na aba 'Clips' (agenda diaria com materia/livro/paginacao), agrupa o
+    texto de cada dia em um bloco, usando a data (dd/mm ou dd/mm/aaaa) como
+    separador de blocos. Sem um seletor CSS estavel conhecido (app nao
+    documentado), agrupa linhas nao vazias, um bloco por dia."""
     body_text = page.locator("body").inner_text()
     if "Tudo vazio" in body_text:
         return []
 
-    # Heuristica: cada recado aparece como bloco de texto separado por
-    # timestamps (HH:MM). Sem um seletor CSS estavel conhecido (app nao
-    # documentado), agrupamos linhas nao vazias, uma "mensagem" por bloco
-    # entre timestamps consecutivos.
     lines = [line.strip() for line in body_text.splitlines() if line.strip()]
-    messages: list[str] = []
+    blocks: list[str] = []
     buffer: list[str] = []
+    current_date: str | None = None
     for line in lines:
-        buffer.append(line)
-        if _looks_like_timestamp(line):
-            text = " ".join(buffer[:-1]).strip()
-            if text and text.lower() not in {"agenda", category_name.lower()}:
-                messages.append(text)
+        if _looks_like_date(line):
+            if current_date and buffer:
+                blocks.append(f"{current_date}\n" + "\n".join(buffer))
+            current_date = line
             buffer = []
-    return messages
+        else:
+            buffer.append(line)
+    if current_date and buffer:
+        blocks.append(f"{current_date}\n" + "\n".join(buffer))
+    return blocks
 
 
-def _looks_like_timestamp(line: str) -> bool:
-    import re
-
-    return bool(re.fullmatch(r"\d{1,2}:\d{2}", line))
+def _match_material(db: Session, school_id: UUID, book_name: str | None) -> PedagogicalMaterial | None:
+    """Tenta casar o nome do livro citado na agenda diaria com um material
+    ja cadastrado na escola. Sem um identificador estavel (ISBN raramente e
+    citado na agenda), usa correspondencia por titulo (substring, case
+    insensitive) - suficiente para o caso comum de o nome bater
+    aproximadamente com o titulo cadastrado."""
+    if not book_name or not book_name.strip():
+        return None
+    normalized = book_name.strip()
+    return db.scalar(
+        select(PedagogicalMaterial).where(
+            PedagogicalMaterial.school_id == school_id,
+            PedagogicalMaterial.is_active.is_(True),
+            PedagogicalMaterial.title.ilike(f"%{normalized}%"),
+        )
+    )
 
 
 def sync_agenda(db: Session, account: ClipEscolaAccount) -> dict:
-    """Le a Agenda de Recados do ClipEscola, usa IA para extrair conteudo de
-    estudo (assunto/data) e alimenta o pipeline pedagogico existente via
-    `SchoolSchedule(source='clip_escola')`."""
+    """Le a aba 'Clips' (agenda diaria com materia/livro/paginacao) do
+    ClipEscola, usa IA para extrair conteudo de estudo por dia e alimenta o
+    pipeline pedagogico existente via `SchoolSchedule(source='clip_escola')`,
+    tentando vincular ao material (livro) ja cadastrado na escola."""
     from playwright.sync_api import sync_playwright
 
     storage_state = _load_storage_state(account)
     if not storage_state or account.status != "active":
         return {"status": "needs_reauth", "message": "Conta nunca pareada ou nao ativa."}
 
-    all_messages: list[str] = []
+    clips_blocks: list[str] = []
     session_valid = True
 
     with sync_playwright() as p:
@@ -233,19 +254,12 @@ def sync_agenda(db: Session, account: ClipEscolaAccount) -> dict:
         if DASHBOARD_URL_FRAGMENT not in page.url:
             session_valid = False
         else:
-            page.get_by_text("AGENDA DE RECADOS", exact=False).first.click()
-            page.wait_for_load_state("networkidle")
-
-            category_names = page.locator("text=/Direção|Secretaria|Recepção|Financeiro|Coordenação|Biblioteca/").all_inner_texts()
-            for category_name in category_names:
-                try:
-                    page.get_by_text(category_name, exact=True).first.click()
-                    page.wait_for_load_state("networkidle")
-                    all_messages.extend(_extract_category_messages(page, category_name))
-                    page.go_back()
-                    page.wait_for_load_state("networkidle")
-                except Exception:
-                    logger.exception("Falha ao ler categoria '%s' do ClipEscola (conta %s)", category_name, account.id)
+            try:
+                page.get_by_text("Clips", exact=False).first.click()
+                page.wait_for_load_state("networkidle")
+                clips_blocks = _extract_clips_entries(page)
+            except Exception:
+                logger.exception("Falha ao ler aba 'Clips' do ClipEscola (conta %s)", account.id)
 
         updated_state = context.storage_state()
         browser.close()
@@ -260,15 +274,19 @@ def sync_agenda(db: Session, account: ClipEscolaAccount) -> dict:
     account.status = "active"
     account.last_synced_at = datetime.utcnow()
 
-    if not all_messages:
+    if not clips_blocks:
         db.flush()
-        return {"status": "success", "schedules_created": 0, "messages_read": 0}
+        return {"status": "success", "schedules_created": 0, "clips_read": 0}
 
-    entries = llm_service.extract_agenda_entries(all_messages)
-    created = _persist_schedule_entries(db, account.child_id, entries)
+    daily_entries = llm_service.extract_daily_agenda_entries(clips_blocks)
+    created = _persist_schedule_entries(db, account.child_id, daily_entries)
     db.flush()
 
-    return {"status": "success", "schedules_created": created, "messages_read": len(all_messages)}
+    return {
+        "status": "success",
+        "schedules_created": created,
+        "clips_read": len(clips_blocks),
+    }
 
 
 def _persist_schedule_entries(db: Session, child_id: UUID, entries: list[dict]) -> int:
@@ -299,12 +317,17 @@ def _persist_schedule_entries(db: Session, child_id: UUID, entries: list[dict]) 
         if existing:
             continue
 
+        material = _match_material(db, child.school_id, entry.get("book"))
+
         schedule = SchoolSchedule(
             child_id=child_id,
             school_id=child.school_id,
             date=entry_date,
             subject=subject,
             topic=entry.get("topic"),
+            material_id=material.id if material else None,
+            page_start=entry.get("page_start"),
+            page_end=entry.get("page_end"),
             source="clip_escola",
             confidence_score=int(float(entry.get("confidence", 0)) * 100),
             status="planned",

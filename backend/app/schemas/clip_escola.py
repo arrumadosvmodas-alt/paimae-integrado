@@ -24,5 +24,5 @@ class ClipEscolaStatusResponse(BaseModel):
 class ClipEscolaSyncResponse(BaseModel):
     status: str
     schedules_created: int = 0
-    messages_read: int = 0
+    clips_read: int = 0
     message: Optional[str] = None
