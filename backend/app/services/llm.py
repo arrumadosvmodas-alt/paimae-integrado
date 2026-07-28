@@ -188,11 +188,13 @@ Responda apenas com a orientação, sem formatação adicional.
 
     def extract_daily_agenda_entries(self, raw_blocks: list[str]) -> list[dict[str, Any]]:
         """
-        Interpreta blocos de texto da agenda diaria (ex: aba 'Clips' do
-        ClipEscola), um bloco por dia, e extrai para cada materia mencionada
-        o assunto/conteudo, o livro citado e a paginacao (quando houver),
-        alem da data. Diferente de extract_agenda_entries (recados gerais),
-        aqui o foco e o conteudo didatico do dia (materia + livro + pagina).
+        Interpreta blocos de texto de posts da aba 'Clips' do ClipEscola (um
+        post por bloco: categoria, autor, data/hora de publicacao, titulo e
+        corpo), e extrai para cada materia mencionada o assunto/conteudo, o
+        livro citado e a paginacao (quando houver). A maioria dos posts e
+        administrativa (avisos, eventos, circulares) e deve ser descartada;
+        so interessa o conteudo didatico (materia + livro + pagina).
+        Diferente de extract_agenda_entries (recados gerais).
         """
         if not raw_blocks:
             return []
@@ -203,15 +205,21 @@ Responda apenas com a orientação, sem formatação adicional.
 
         try:
             prompt = f"""
-Voce recebe blocos de texto da agenda diaria de uma escola. Cada bloco comeca com uma data e lista,
-por materia, o conteudo estudado no dia - normalmente citando o livro/apostila usado e a paginacao
+Voce recebe blocos de texto, cada um um post publicado na aba de comunicacao de uma escola. Cada
+bloco comeca com "Postado por <autor>", seguido da data e hora de publicacao (dd/mm/aaaa e HH:MM),
+depois titulo e corpo da mensagem. A maioria dos posts e administrativa (aviso, evento, circular,
+cobranca) e deve ser IGNORADA. Interessa apenas quando o post descreve CONTEUDO DIDATICO estudado
+pela crianca, normalmente citando materia, livro/apostila usado e paginacao
 (ex: "Matematica - Livro Aprender Juntos, pag. 12 a 15" ou "Portugues p. 20-22").
 
-BLOCOS (um por dia, numerados):
+Use como "date" a data DE PUBLICACAO do post (a que aparece perto de "Postado por"), NAO outras
+datas eventualmente citadas no corpo do texto (ex: data de um evento futuro mencionado no aviso).
+
+BLOCOS (um por post, numerados):
 {chr(10).join(f"=== Bloco {i+1} ==={chr(10)}{b}" for i, b in enumerate(raw_blocks))}
 
-Para cada materia identificada em cada bloco, retorne um item. Retorne APENAS um JSON (lista), sem
-markdown, no formato:
+Para cada materia identificada em cada bloco com conteudo didatico, retorne um item. Retorne APENAS
+um JSON (lista), sem markdown, no formato:
 [
   {{
     "subject": "disciplina (ex: Matematica, Portugues, Ciencias)",

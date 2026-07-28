@@ -115,7 +115,7 @@ export function ClipEscolaSync({ childId, notify }: ClipEscolaSyncProps) {
       } else {
         notify(
           `Sincronizado: ${result.schedules_created} novo(s) conteúdo(s) de estudo identificado(s)` +
-            (result.clips_read ? ` (${result.clips_read} dia(s) lido(s) na aba Clips).` : "."),
+            (result.clips_read ? ` (${result.clips_read} post(s) lido(s) na aba Clips).` : "."),
         );
       }
     } catch (error) {

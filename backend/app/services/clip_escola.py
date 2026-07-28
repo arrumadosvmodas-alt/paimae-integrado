@@ -181,36 +181,33 @@ async def check_pairing_status(db: Session, account: ClipEscolaAccount) -> dict:
     return {"status": account.status, "qr_image_base64": None}
 
 
-def _looks_like_date(line: str) -> bool:
-    import re
-
-    return bool(re.fullmatch(r"\d{1,2}/\d{1,2}(/\d{2,4})?", line.strip()))
-
-
 def _extract_clips_entries(page) -> list[str]:
-    """Na aba 'Clips' (agenda diaria com materia/livro/paginacao), agrupa o
-    texto de cada dia em um bloco, usando a data (dd/mm ou dd/mm/aaaa) como
-    separador de blocos. Sem um seletor CSS estavel conhecido (app nao
-    documentado), agrupa linhas nao vazias, um bloco por dia."""
+    """Na aba 'Clips', agrupa o texto de cada post em um bloco. O layout real
+    (confirmado por captura de tela do usuario) e um feed de posts, cada um
+    com categoria (ex: 'Avisos e Circulares'), 'Postado por <autor>', uma
+    data dd/mm/aaaa e hora, seguidos de titulo e corpo da mensagem - tudo
+    isso agrupado sob rotulos relativos de dia (ex: 'Ontem') que NAO sao
+    confiaveis como data exata. Por isso usamos a linha 'Postado por ...'
+    como inicio de cada bloco (post), e extraimos a data real de dentro do
+    bloco depois, via regex, em vez de depender de um separador de data."""
     body_text = page.locator("body").inner_text()
     if "Tudo vazio" in body_text:
         return []
 
     lines = [line.strip() for line in body_text.splitlines() if line.strip()]
-    blocks: list[str] = []
-    buffer: list[str] = []
-    current_date: str | None = None
+    blocks: list[list[str]] = []
+    current: list[str] | None = None
     for line in lines:
-        if _looks_like_date(line):
-            if current_date and buffer:
-                blocks.append(f"{current_date}\n" + "\n".join(buffer))
-            current_date = line
-            buffer = []
-        else:
-            buffer.append(line)
-    if current_date and buffer:
-        blocks.append(f"{current_date}\n" + "\n".join(buffer))
-    return blocks
+        if line.lower().startswith("postado por"):
+            if current is not None:
+                blocks.append(current)
+            current = [line]
+        elif current is not None:
+            current.append(line)
+        # linhas antes do primeiro post (rotulo de dia, categoria) sao descartadas
+    if current is not None:
+        blocks.append(current)
+    return ["\n".join(block) for block in blocks]
 
 
 def _match_material(db: Session, school_id: UUID, book_name: str | None) -> PedagogicalMaterial | None:
@@ -232,10 +229,11 @@ def _match_material(db: Session, school_id: UUID, book_name: str | None) -> Peda
 
 
 def sync_agenda(db: Session, account: ClipEscolaAccount) -> dict:
-    """Le a aba 'Clips' (agenda diaria com materia/livro/paginacao) do
-    ClipEscola, usa IA para extrair conteudo de estudo por dia e alimenta o
-    pipeline pedagogico existente via `SchoolSchedule(source='clip_escola')`,
-    tentando vincular ao material (livro) ja cadastrado na escola."""
+    """Le os posts visiveis na aba 'Clips' do ClipEscola, usa IA para
+    extrair conteudo de estudo (materia/livro/paginacao) dos que forem
+    didaticos e alimenta o pipeline pedagogico existente via
+    `SchoolSchedule(source='clip_escola')`, tentando vincular ao material
+    (livro) ja cadastrado na escola."""
     from playwright.sync_api import sync_playwright
 
     storage_state = _load_storage_state(account)
@@ -289,21 +287,31 @@ def sync_agenda(db: Session, account: ClipEscolaAccount) -> dict:
     }
 
 
+def _post_date(block: str) -> str | None:
+    """Extrai a data 'oficial' do post (a que aparece perto de 'Postado
+    por ... dd/mm/aaaa ... HH:MM', tipicamente nas primeiras linhas do
+    bloco). So cai para o resto do bloco se nao achar nada no cabecalho,
+    ja que o CORPO da mensagem pode citar outras datas sem relacao (ex: a
+    data de um evento futuro mencionado no texto do aviso)."""
+    import re
+
+    lines = block.splitlines()
+    header = "\n".join(lines[:5])
+    match = re.search(r"\d{2}/\d{2}/\d{4}", header)
+    if match:
+        return match.group(0)
+    match = re.search(r"\d{2}/\d{2}/\d{4}", block)
+    return match.group(0) if match else None
+
+
 def _block_matches_date(block: str, target_date: date) -> bool:
-    first_line = block.splitlines()[0].strip() if block else ""
-    candidates = {
-        target_date.strftime("%d/%m"),
-        target_date.strftime("%d/%m/%Y"),
-        target_date.strftime("%d/%m/%y"),
-    }
-    return first_line in candidates
+    return _post_date(block) == target_date.strftime("%d/%m/%Y")
 
 
 def _go_to_previous_period(page) -> bool:
     """Tenta clicar num controle de navegacao 'anterior' na aba Clips (seta,
     botao ou link com nome comum em datepickers PrimeFaces) para carregar um
-    periodo anterior. Retorna False se nao achar nenhum controle - nesse
-    caso nao ha mais como voltar e a busca para."""
+    periodo anterior. Retorna False se nao achar nenhum controle."""
     selectors = [
         "button:has-text('Anterior')",
         "a:has-text('Anterior')",
@@ -323,6 +331,27 @@ def _go_to_previous_period(page) -> bool:
         except Exception:
             continue
     return False
+
+
+def _scroll_for_more_content(page) -> bool:
+    """A aba 'Clips' e um feed (confirmado por captura de tela do usuario),
+    sem controles visiveis de paginacao - o padrao comum nesse tipo de lista
+    mobile e carregar posts mais antigos ao rolar. Usado como alternativa
+    quando nao ha botao de 'anterior'. Retorna False se a rolagem nao mudou
+    o conteudo visivel (chegamos ao fim do historico)."""
+    before = page.locator("body").inner_text()
+    try:
+        page.mouse.wheel(0, 4000)
+        page.wait_for_timeout(800)
+        page.wait_for_load_state("networkidle")
+    except Exception:
+        return False
+    after = page.locator("body").inner_text()
+    return after != before
+
+
+def _advance_clips_page(page) -> bool:
+    return _go_to_previous_period(page) or _scroll_for_more_content(page)
 
 
 _DATE_LOOKUP_MAX_ATTEMPTS = 12  # limite de "paginas para tras" antes de desistir
@@ -362,7 +391,7 @@ def find_agenda_for_date(db: Session, account: ClipEscolaAccount, target_date: d
                     if match:
                         found_block = match
                         break
-                    if not _go_to_previous_period(page):
+                    if not _advance_clips_page(page):
                         break
             except Exception:
                 logger.exception(
